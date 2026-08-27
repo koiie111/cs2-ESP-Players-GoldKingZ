@@ -1,0 +1,13 @@
+{
+	"Color.Menu.Title": "Персональный цвет ESP-подсветки",
+	"Color.Menu.CT": "Спецназ",
+	"Color.Menu.T": "Террористы",
+	"Color.Menu.Current": "сейчас",
+	"Color.Menu.Custom": "Свой HEX-цвет...",
+	"Color.PrefsUnavailable": "{green}[ESP] {darkred}Настройки игрока ещё не загрузились. Попробуйте через несколько секунд.",
+	"Color.Custom.Prompt": "{green}[ESP] {grey}Введите цвет в чат в формате {lime}#FFFFFF{grey}. Для отмены напишите {lime}отмена{grey}.",
+	"Color.Custom.Picker": "{green}[ESP] {grey}Выбрать цвет можно здесь: {lime}https://htmlcolorcodes.com/color-picker/",
+	"Color.Custom.Cancelled": "{green}[ESP] {grey}Ввод своего цвета отменён.",
+	"Color.Custom.Invalid": "{green}[ESP] {darkred}Неверный цвет. Введите ровно 6 HEX-символов, например {lime}#12A4FF{darkred}.",
+	"Color.Applied": "{green}[ESP] {grey}Цвет подсветки команды «{0}» изменён на {lime}{1}{grey}."
+}

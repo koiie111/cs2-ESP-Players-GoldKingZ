@@ -17,5 +17,17 @@
 	"PrintToChatToPlayer.Give.ESP.State.Disabled": "{darkred}Disabled",
 	"PrintToConsoleToPlayer.Give.ESP.List.Header": "[ESP Players] ESP Status ({0} Players):",
 	"PrintToConsoleToPlayer.Give.ESP.List.Enabled": "  {0} : Enabled",
-	"PrintToConsoleToPlayer.Give.ESP.List.Disabled": "  {0} : Disabled"
+	"PrintToConsoleToPlayer.Give.ESP.List.Disabled": "  {0} : Disabled",
+
+	"Color.Menu.Title": "Personal ESP glow color",
+	"Color.Menu.CT": "Counter-Terrorists",
+	"Color.Menu.T": "Terrorists",
+	"Color.Menu.Current": "current",
+	"Color.Menu.Custom": "Custom HEX color...",
+	"Color.PrefsUnavailable": "{green}[ESP] {darkred}Player preferences are not ready. Try again in a moment.",
+	"Color.Custom.Prompt": "{green}[ESP] {grey}Enter a color in chat in the format {lime}#FFFFFF{grey}. Type {lime}cancel{grey} to cancel.",
+	"Color.Custom.Picker": "{green}[ESP] {grey}Color picker: {lime}https://htmlcolorcodes.com/color-picker/",
+	"Color.Custom.Cancelled": "{green}[ESP] {grey}Custom color input cancelled.",
+	"Color.Custom.Invalid": "{green}[ESP] {darkred}Invalid color. Use exactly 6 hexadecimal digits, for example {lime}#12A4FF{darkred}.",
+	"Color.Applied": "{green}[ESP] {grey}{0} glow color changed to {lime}{1}{grey}."
 }

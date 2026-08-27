@@ -13,7 +13,7 @@
 
 <a href="https://discord.com/invite/U7AuQhu"><img src="https://discord.com/api/guilds/651838917687115806/widget.png?style=banner2"></a>
 
-# [CS2] ESP-Players-GoldKingZ (1.0.4)
+# [CS2] ESP-Players-GoldKingZ (1.1.0 fork)
 
 Show Glow/Esp To Players With Flags
 
@@ -30,6 +30,8 @@ Show Glow/Esp To Players With Flags
 
 [![ClientPrefs-GoldKingZ](https://img.shields.io/badge/ClientPrefs--GoldKingZ-REQUIRED_TO_DOWNLOAD-red?logo=github&labelColor=FFD700)](https://github.com/oqyh/cs2-ClientPrefs-GoldKingZ/releases)
 
+[![CS2MenuManager](https://img.shields.io/badge/CS2MenuManager--1.0.43+-REQUIRED_TO_DOWNLOAD-red?logo=github&labelColor=4B0082)](https://github.com/schwarper/CS2MenuManager/releases)
+
 [![JSON](https://img.shields.io/badge/JSON-INCLUDED_IN_ZIP-brightgreen?logo=json&labelColor=000000)](https://www.newtonsoft.com/json)
 
 ---
@@ -41,6 +43,12 @@ Show Glow/Esp To Players With Flags
 2. Extract contents to your `csgo` directory
 3. Configure settings in `ESP-Players-GoldKingZ/config/config.json`
 4. Restart your server
+
+### Personal glow colors
+
+Players can type `!color` to open a WASD menu and configure separate personal glow colors for Counter-Terrorists and Terrorists. Every preset is rendered in its actual color before selection. The custom option accepts exactly `#RRGGBB` in chat and applies it immediately; the chat message containing the HEX value is hidden from other players.
+
+Color preferences are persisted by ClientPrefs-GoldKingZ. Install CS2MenuManager 1.0.43 or newer in `addons/counterstrikesharp/` before loading this plugin.
 
 ---
 

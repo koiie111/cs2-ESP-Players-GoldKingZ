@@ -300,7 +300,6 @@ public class Helper
                 "",
                 false,
                 null!,
-                null!,
                 DateTime.MinValue
             );
             g_Main.Player_Data.TryAdd(player.Slot, initialData);
@@ -341,11 +340,14 @@ public class Helper
         }
         handle.ModelRelay = null!;
 
-        if(handle.ModelGlow != null && handle.ModelGlow.IsValid)
+        foreach (var glow in handle.ModelGlows.Values)
         {
-            handle.ModelGlow.Remove();
+            if (glow != null && glow.IsValid)
+            {
+                glow.Remove();
+            }
         }
-        handle.ModelGlow = null!;
+        handle.ModelGlows.Clear();
 
         handle.Player_ModelName = "";
     }
@@ -366,11 +368,16 @@ public class Helper
             player_model = player.PlayerPawn.Value?.CBodyComponent?.SceneNode?.GetSkeletonInstance().ModelState.ModelName ?? "";
         }
 
-        if(handle.ModelGlow != null && handle.ModelGlow.IsValid)
+        bool hasGlowSetup = handle.ModelRelay != null && handle.ModelRelay.IsValid;
+        if(hasGlowSetup)
         {
             bool ModelChanged = !string.IsNullOrEmpty(player_model) && !string.IsNullOrEmpty(handle.Player_ModelName) && handle.Player_ModelName != player_model;
 
-            if(!ModelChanged && player.IsAlive()) return;
+            if(!ModelChanged && player.IsAlive())
+            {
+                EnsureViewerGlows(handle, player, player_model);
+                return;
+            }
 
             RemoveGlow(player);
 
@@ -384,7 +391,6 @@ public class Helper
         || string.IsNullOrEmpty(player_model))return;
 
         string uniqueName_ModelRelay = "MR_" + Guid.NewGuid().ToString("N");
-        string uniqueName_ModelGlow = "MG_" + Guid.NewGuid().ToString("N");
         handle.ModelRelay = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic")!;
         if (handle.ModelRelay == null)return;
         handle.ModelRelay.CBodyComponent!.SceneNode!.Owner!.Entity!.Flags &= ~(1u << 2);
@@ -395,31 +401,71 @@ public class Helper
         handle.ModelRelay.RenderMode = RenderMode_t.kRenderNone;
         handle.ModelRelay.Collision.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_NONE;
 
-        handle.ModelGlow = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic")!;
-        if (handle.ModelGlow == null)return;
-        handle.ModelGlow.CBodyComponent!.SceneNode!.Owner!.Entity!.Flags &= ~(1u << 2);
-
-        handle.ModelGlow.Render = Color.FromArgb(1, 0, 0, 0);
-        handle.ModelGlow.SetModel(player_model);
-        handle.ModelGlow.DispatchSpawn();
-        if(handle.ModelGlow.Entity != null)handle.ModelGlow.Entity.Name = uniqueName_ModelGlow;
-        handle.ModelGlow.Spawnflags = 256u;
-
-        if(player.TeamNum == (byte)CsTeam.CounterTerrorist)
-        {
-            handle.ModelGlow.Glow.GlowColorOverride = Configs.Instance.Glow_Color_CT.ToColor();
-        }else if(player.TeamNum == (byte)CsTeam.Terrorist)
-        {
-            handle.ModelGlow.Glow.GlowColorOverride = Configs.Instance.Glow_Color_T.ToColor();
-        }
-        handle.ModelGlow.Glow.GlowRange = Configs.Instance.GlowRange;
-        handle.ModelGlow.Glow.GlowTeam = -1;
-        handle.ModelGlow.Glow.GlowType = Configs.Instance.GlowType?2:3;
-        handle.ModelGlow.Glow.GlowRangeMin = 100;
-
         handle.ModelRelay.AcceptInput("FollowEntity", player.PlayerPawn.Value, handle.ModelRelay, "!activator");
-        handle.ModelGlow.AcceptInput("FollowEntity", handle.ModelRelay, handle.ModelGlow, "!activator");
         handle.Player_ModelName = player_model;
+        EnsureViewerGlows(handle, player, player_model);
+    }
+
+    private static void EnsureViewerGlows(Globals.PlayerDataClass handle, CCSPlayerController target, string playerModel)
+    {
+        foreach (var viewer in GetPlayersController(false))
+        {
+            if (viewer == null || !viewer.IsValid || viewer.IsBot || viewer.IsHLTV) continue;
+            Color desiredColor = MainPlugin.Instance.GetViewerGlowColor(viewer.Slot, target.TeamNum);
+            if (handle.ModelGlows.TryGetValue(viewer.Slot, out var existing) && existing != null && existing.IsValid)
+            {
+                if (existing.Glow.GlowColorOverride.ToArgb() != desiredColor.ToArgb())
+                {
+                    existing.Glow.GlowColorOverride = desiredColor;
+                }
+                continue;
+            }
+
+            var glow = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic");
+            if (glow == null) continue;
+
+            glow.CBodyComponent!.SceneNode!.Owner!.Entity!.Flags &= ~(1u << 2);
+            glow.Render = Color.FromArgb(1, 0, 0, 0);
+            glow.SetModel(playerModel);
+            glow.DispatchSpawn();
+            if (glow.Entity != null) glow.Entity.Name = $"MG_{target.Slot}_{viewer.Slot}_{Guid.NewGuid():N}";
+            glow.Spawnflags = 256u;
+            glow.Glow.GlowColorOverride = desiredColor;
+            glow.Glow.GlowRange = Configs.Instance.GlowRange;
+            glow.Glow.GlowTeam = -1;
+            glow.Glow.GlowType = Configs.Instance.GlowType ? 2 : 3;
+            glow.Glow.GlowRangeMin = 100;
+            glow.AcceptInput("FollowEntity", handle.ModelRelay, glow, "!activator");
+            handle.ModelGlows[viewer.Slot] = glow;
+        }
+    }
+
+    public static void RefreshViewerGlows(CCSPlayerController viewer)
+    {
+        if (viewer == null || !viewer.IsValid) return;
+
+        foreach (var data in MainPlugin.Instance.g_Main.Player_Data.Values)
+        {
+            if (data.ModelGlows.Remove(viewer.Slot, out var oldGlow) && oldGlow != null && oldGlow.IsValid)
+            {
+                oldGlow.Remove();
+            }
+
+            var target = data.Player?.Get_CCSPlayerController_ControlledBot();
+            if (target == null || !target.IsValid || !target.IsAlive() || data.ModelRelay == null || !data.ModelRelay.IsValid) continue;
+            EnsureViewerGlows(data, target, data.Player_ModelName);
+        }
+    }
+
+    public static void RemoveViewerGlows(int viewerSlot)
+    {
+        foreach (var data in MainPlugin.Instance.g_Main.Player_Data.Values)
+        {
+            if (data.ModelGlows.Remove(viewerSlot, out var glow) && glow != null && glow.IsValid)
+            {
+                glow.Remove();
+            }
+        }
     }
 
     public static void StartTimer()
@@ -459,15 +505,17 @@ public class Helper
         foreach (var data in MainPlugin.Instance.g_Main.Player_Data.Values)
         {
             var ModelRelay = data.ModelRelay;
-            var ModelGlow = data.ModelGlow;
 
             if(ModelRelay != null && ModelRelay.IsValid)
             {
                 ModelRelay.Remove();
             }
-            if(ModelGlow != null && ModelGlow.IsValid)
+            foreach (var glow in data.ModelGlows.Values)
             {
-                ModelGlow.Remove();
+                if (glow != null && glow.IsValid)
+                {
+                    glow.Remove();
+                }
             }
         }
         MainPlugin.Instance.g_Main.Player_Data?.Clear();
@@ -486,6 +534,8 @@ public class Helper
 
         MainPlugin.Instance.AddCommandListener("say", MainPlugin.Instance.OnPlayerSay, HookMode.Post);
         MainPlugin.Instance.AddCommandListener("say_team", MainPlugin.Instance.OnPlayerSay_Team, HookMode.Post);
+        MainPlugin.Instance.AddCommandListener("say", MainPlugin.Instance.OnColorInput, HookMode.Pre);
+        MainPlugin.Instance.AddCommandListener("say_team", MainPlugin.Instance.OnColorInput, HookMode.Pre);
         MainPlugin.Instance.HookUserMessage(118, MainPlugin.Instance.OnUserMessage_OnSayText2, HookMode.Pre);
 
         RegisterCssCommands(Configs.Instance.Reload_Plugin.Reload_Plugin_CommandsInGame.ConvertCommands(), "Commands To Reload ESP Plugin", MainPlugin.Instance.Game_UserMessages.CommandsAction_ReloadPlugin);
@@ -508,6 +558,8 @@ public class Helper
 
         MainPlugin.Instance.RemoveCommandListener("say", MainPlugin.Instance.OnPlayerSay, HookMode.Post);
         MainPlugin.Instance.RemoveCommandListener("say_team", MainPlugin.Instance.OnPlayerSay_Team, HookMode.Post);
+        MainPlugin.Instance.RemoveCommandListener("say", MainPlugin.Instance.OnColorInput, HookMode.Pre);
+        MainPlugin.Instance.RemoveCommandListener("say_team", MainPlugin.Instance.OnColorInput, HookMode.Pre);
         MainPlugin.Instance.UnhookUserMessage(118, MainPlugin.Instance.OnUserMessage_OnSayText2, HookMode.Pre);
 
         RemoveCssCommands(Configs.Instance.Reload_Plugin.Reload_Plugin_CommandsInGame.ConvertCommands(), MainPlugin.Instance.Game_UserMessages.CommandsAction_ReloadPlugin);

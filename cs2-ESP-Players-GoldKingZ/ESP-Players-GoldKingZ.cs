@@ -21,14 +21,16 @@ namespace ESP_Players_GoldKingZ;
 public sealed class ClientPrefs
 {
     public bool Toggle_ESP { get; set; } = Configs.Instance.Toggle_ESP.Default_Toggle_ESP;
+    public string Glow_Color_CT { get; set; } = "";
+    public string Glow_Color_T { get; set; } = "";
 }
 
-public class MainPlugin : BasePlugin
+public partial class MainPlugin : BasePlugin
 {
     public override string ModuleName => "Show Glow/Esp To Players With Flags";
-    public override string ModuleVersion => "1.0.4";
-    public override string ModuleAuthor => "Gold KingZ";
-    public override string ModuleDescription => "https://github.com/oqyh";
+    public override string ModuleVersion => "1.1.0";
+    public override string ModuleAuthor => "Gold KingZ, koiie111";
+    public override string ModuleDescription => "https://github.com/koiie111/cs2-ESP-Players-GoldKingZ";
     public static MainPlugin Instance { get; set; } = new();
     public Globals g_Main = new();
     public readonly Game_UserMessages Game_UserMessages = new();
@@ -198,12 +200,11 @@ public class MainPlugin : BasePlugin
                 var data = kv.Value;
                 if (data == null) continue;
 
-                var ModelGlow = data.ModelGlow;
                 var ModelRelay = data.ModelRelay;
 
-                bool hasGlow = ModelGlow != null && ModelGlow.IsValid;
                 bool hasRelay = ModelRelay != null && ModelRelay.IsValid;
-                if (!hasGlow && !hasRelay) continue;
+                bool hasAnyGlow = data.ModelGlows.Values.Any(glow => glow != null && glow.IsValid);
+                if (!hasAnyGlow && !hasRelay) continue;
 
                 bool remove = shouldRemoveGlow;
 
@@ -227,10 +228,16 @@ public class MainPlugin : BasePlugin
                     }
                 }
 
-                if (!remove) continue;
+                foreach (var viewerGlow in data.ModelGlows)
+                {
+                    var glow = viewerGlow.Value;
+                    if (glow != null && glow.IsValid && (remove || viewerGlow.Key != viewerSlot))
+                    {
+                        info.TransmitEntities.Remove(glow);
+                    }
+                }
 
-                if (hasGlow) info.TransmitEntities.Remove(ModelGlow!);
-                if (hasRelay) info.TransmitEntities.Remove(ModelRelay!);
+                if (remove && hasRelay) info.TransmitEntities.Remove(ModelRelay!);
             }
         }
     }
@@ -269,6 +276,8 @@ public class MainPlugin : BasePlugin
         if(player == null || !player.IsValid) return HookResult.Continue;
 
         Helper.RemoveGlow(player);
+        Helper.RemoveViewerGlows(player.Slot);
+        _pendingColorInputs.Remove(player.SteamID);
 
         if(!Configs.Instance.Give_ESP.Give_ESP_SaveOnDisconnect)
         {
