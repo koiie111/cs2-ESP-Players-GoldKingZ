@@ -13,9 +13,9 @@
 
 <a href="https://discord.com/invite/U7AuQhu"><img src="https://discord.com/api/guilds/651838917687115806/widget.png?style=banner2"></a>
 
-# [CS2] ESP-Players-GoldKingZ (1.1.2 fork)
+# [CS2] ESP-Players-GoldKingZ (1.2.0 fork)
 
-Show Glow/Esp To Players With Flags
+ESP is always enabled for every connected player. Players can only customize their personal CT/T glow colors; toggle and admin-give commands are intentionally disabled.
 
 ![glowesp](https://github.com/user-attachments/assets/8a954561-5aca-4a43-bd3a-0de2f1a0a8e3)
 
@@ -70,18 +70,12 @@ Color preferences are persisted by ClientPrefs-GoldKingZ. Install CS2MenuManager
 | `Reload_Plugin_CommandsInGame` | Commands to reload the plugin (console/chat by `!` or `css_`) | `Console_Commands:` `Chat_Commands:`<br>Both empty = Disable | - |
 | `Reload_Plugin_Flags` | Restrict reload command to SteamIDs, Flags, Groups | `SteamIDs:` `Flags:` `Groups:`<br>All empty = Allow everyone | `Reload_Plugin_CommandsInGame` |
 | `Reload_Plugin_Hide` | Hide chat after executing reload command | `0`-No<br>`1`-Only after successful toggle<br>`2`-Hide all the time | `Reload_Plugin_Flags` |
-| `Give_ESP_CommandsInGame` | Commands to give ESP to players on/off (console/chat by `!` or `css_`) | `Console_Commands:` `Chat_Commands:`<br>Both empty = Disable | - |
-| `Give_ESP_Flags` | Restrict give command to SteamIDs, Flags, Groups | `SteamIDs:` `Flags:` `Groups:`<br>All empty = Allow everyone | `Give_ESP_CommandsInGame` |
-| `Give_ESP_Hide` | Hide chat after executing give command | `0`-No<br>`1`-Only after successful toggle<br>`2`-Hide all the time | `Give_ESP_Flags` |
-| `Give_ESP_SaveOnDisconnect` | Keep admin-given ESP after a player disconnects/reconnects | `true`-Yes (kept on reconnect, cleared on map change)<br>`false`-No (one-time session, cleared on disconnect or map change) | `Give_ESP_CommandsInGame` |
-| `Toggle_ESP_CommandsInGame` | Commands to toggle ESP on/off (console/chat by `!` or `css_`) | `Console_Commands:` `Chat_Commands:`<br>Both empty = Disable | - |
-| `Toggle_ESP_Flags` | Restrict toggle command to SteamIDs, Flags, Groups | `SteamIDs:` `Flags:` `Groups:`<br>All empty = Allow everyone | `Toggle_ESP_CommandsInGame` |
-| `Toggle_ESP_Hide` | Hide chat after executing toggle command | `0`-No<br>`1`-Only after successful toggle<br>`2`-Hide all the time | `Toggle_ESP_Flags` |
-| `Default_Toggle_ESP` | Default ESP toggle for new players | `true`-On<br>`false`-Off (must toggle manually) | - |
-| `DisableOnWarmUp` | Disable ESP during warmup | `true`/`false` | - |
+| `Give_ESP.*` | Legacy settings retained for config compatibility; ignored in 1.2.0+ | - | - |
+| `Toggle_ESP.*` | Legacy settings retained for config compatibility; ignored in 1.2.0+ | - | - |
+| `DisableOnWarmUp` | Legacy setting retained for config compatibility; ignored in 1.2.0+ | - | - |
 | `DisableGlowOnGOTV` | Disable glow in demo GOTV/HLTV | `true`/`false` | - |
-| `Show_ESP_For` | Who can see ESP | `0`-Any<br>`1`-Dead players only<br>`2`-Spec players only | - |
-| `ShowOnlyEnemyTeam` | Show ESP only for enemy team | `true`-Yes (disable teammate ESP)<br>`false`-No (show all) | `Show_ESP_For=0 or 1` |
+| `Show_ESP_For` | Legacy setting retained for config compatibility; ignored in 1.2.0+ | - | - |
+| `ShowOnlyEnemyTeam` | Legacy setting retained for config compatibility; ignored in 1.2.0+ | - | - |
  
 </details>
 <details>
@@ -188,13 +182,12 @@ public override void Unload(bool hotReload)
 }
 ```
  
-### 2. Use it
+### 2. Check availability
  
 ```csharp
 if (_esp == null) return;
  
-if (!_esp.IsESPActive(player))
-    _esp.SetESP(player, true);
+bool active = _esp.IsESPActive(player); // true for every valid connected player
 ```
  
 ### 3. Listen for changes
@@ -218,10 +211,10 @@ That's it.
  
 | Method | Description |
 | --- | --- |
-| `IsESPActive(player)` / `(slot)` | `true` if ESP is active — own toggle OR admin-given |
-| `IsESPActive(..., personalToggleOnly: true)` | `true` only if the player toggled it on themselves |
+| `IsESPActive(player)` / `(slot)` | `true` for every valid connected player |
+| `IsESPActive(..., personalToggleOnly: true)` | Compatibility parameter; also returns `true` for every valid connected player |
  
-> Granted ESP is an **OR** on top of the player's own toggle, not a gate.
+> ESP state is unconditional in version 1.2.0 and newer.
  
 ### Permissions
  
@@ -234,9 +227,9 @@ That's it.
  
 | Method | Description |
 | --- | --- |
-| `SetESP(player, state)` / `(slot, state)` | Grant (`true`) or revoke (`false`) admin-style ESP |
+| `SetESP(player, state)` / `(slot, state)` | Compatibility no-op; ESP cannot be disabled |
  
-> Fires `OnESPChanged` only when the state actually changes.
+> State-change hooks are retained for API compatibility but are not fired by the always-on implementation.
  
 ### Hooks
  

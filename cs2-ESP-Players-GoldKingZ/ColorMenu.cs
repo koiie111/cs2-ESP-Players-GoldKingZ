@@ -69,12 +69,12 @@ public partial class MainPlugin
         string ctHex = GetEffectiveGlowHex(player.Slot, (byte)CsTeam.CounterTerrorist);
         menu.AddItem(
             $"{Localizer.ForPlayer(player, "Color.Menu.CT")} {ColorPreview(ctHex)}",
-            (selectedPlayer, _) => Server.NextFrame(() => ShowPresetColorMenu(selectedPlayer, GlowTeamChoice.CounterTerrorist)));
+            (selectedPlayer, _) => ShowPresetColorMenu(selectedPlayer, GlowTeamChoice.CounterTerrorist));
 
         string tHex = GetEffectiveGlowHex(player.Slot, (byte)CsTeam.Terrorist);
         menu.AddItem(
             $"{Localizer.ForPlayer(player, "Color.Menu.T")} {ColorPreview(tHex)}",
-            (selectedPlayer, _) => Server.NextFrame(() => ShowPresetColorMenu(selectedPlayer, GlowTeamChoice.Terrorist)));
+            (selectedPlayer, _) => ShowPresetColorMenu(selectedPlayer, GlowTeamChoice.Terrorist));
 
         return menu;
     }

@@ -32,17 +32,7 @@ public class ESPPlayersApiImpl : IESPPlayersApi
 
     public bool IsESPActive(CCSPlayerController player, bool personalToggleOnly = false)
     {
-        if (player == null || !player.IsValid) return false;
-
-        var _prefs = MainPlugin.Instance._prefs;
-        var g_Main = MainPlugin.Instance.g_Main;
-
-        bool toggle = _prefs != null && _prefs.TryGetValue(player.Slot, out var prefs) && prefs.Toggle_ESP;
-        if (personalToggleOnly)
-            return toggle;
-
-        bool given = g_Main.Player_Data.TryGetValue(player.Slot, out var data) && data.Gived_ESP;
-        return toggle || given;
+        return player != null && player.IsValid;
     }
     public bool IsESPActive(int slot, bool personalToggleOnly = false)
         => FromSlot(slot) is { } p && IsESPActive(p, personalToggleOnly);
@@ -72,15 +62,7 @@ public class ESPPlayersApiImpl : IESPPlayersApi
 
     public void SetESP(CCSPlayerController player, bool state)
     {
-        if (player == null || !player.IsValid) return;
-
-        var g_Main = MainPlugin.Instance.g_Main;
-        Helper.CheckPlayerInGlobals(player);
-        if (!g_Main.Player_Data.TryGetValue(player.Slot, out var data)) return;
-        if (data.Gived_ESP == state) return;
-
-        data.Gived_ESP = state;
-        RaiseESPChanged(player, state);
+        // ESP is intentionally always enabled for every valid player.
     }
     public void SetESP(int slot, bool state)
     {

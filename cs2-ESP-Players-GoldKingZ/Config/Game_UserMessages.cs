@@ -27,16 +27,6 @@ public class Game_UserMessages
             Handle_ReloadPlugin(player, null!, um!);
         }
 
-        if (Configs.Instance.Give_ESP.Give_ESP_CommandsInGame.ConvertCommands(true)?.Any(c => message.Equals(c.Trim(), StringComparison.OrdinalIgnoreCase) || message.StartsWith(c.Trim() + " ", StringComparison.OrdinalIgnoreCase)) == true)
-        {
-            Handle_CommandsAction_Give_ESP(player, null!, um!, message);
-        }
-
-        if (Configs.Instance.Toggle_ESP.Toggle_ESP_CommandsInGame.ConvertCommands(true)?.Any(c => message.Equals(c.Trim(), StringComparison.OrdinalIgnoreCase)) == true)
-        {
-            Handle_CommandsAction_Toggle_ESP(player, null!, um!);
-        }
-
         return HookResult.Continue;
     }
 

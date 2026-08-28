@@ -5,12 +5,12 @@ namespace ESP_Players_GoldKingZ.Shared;
 public interface IESPPlayersApi
 {
     /// <summary>
-    /// True if ESP is active (own toggle OR admin-given). personalToggleOnly = true checks only the player's own toggle.
+    /// True for every valid connected player. personalToggleOnly is retained for binary/source compatibility and is ignored.
     /// </summary>
     bool IsESPActive(CCSPlayerController player, bool personalToggleOnly = false);
 
     /// <summary>
-    /// True if ESP is active (own toggle OR admin-given). personalToggleOnly = true checks only the player's own toggle.
+    /// True for every valid connected player. personalToggleOnly is retained for binary/source compatibility and is ignored.
     /// </summary>
     bool IsESPActive(int slot, bool personalToggleOnly = false);
 
@@ -25,12 +25,12 @@ public interface IESPPlayersApi
     bool HasPermission(int slot, string permissionsString = "", string SteamIDs = "", string Flags = "", string Groups = "");
 
     /// <summary>
-    /// Grants (true) or revokes (false) admin-style ESP. Fires OnESPChanged only when the state changes.
+    /// Compatibility no-op: ESP is always enabled and cannot be revoked.
     /// </summary>
     void SetESP(CCSPlayerController player, bool state);
 
     /// <summary>
-    /// Grants (true) or revokes (false) admin-style ESP. Fires OnESPChanged only when the state changes.
+    /// Compatibility no-op: ESP is always enabled and cannot be revoked.
     /// </summary>
     void SetESP(int slot, bool state);
 

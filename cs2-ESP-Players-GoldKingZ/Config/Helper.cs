@@ -387,17 +387,15 @@ public class Helper
         RemoveGlow(player);
 
         if (!player.IsAlive()
-        || Configs.Instance.DisableOnWarmUp && IsWarmup()
         || string.IsNullOrEmpty(player_model))return;
 
         string uniqueName_ModelRelay = "MR_" + Guid.NewGuid().ToString("N");
         handle.ModelRelay = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic")!;
         if (handle.ModelRelay == null)return;
-        handle.ModelRelay.CBodyComponent!.SceneNode!.Owner!.Entity!.Flags &= ~(1u << 2);
+        handle.ModelRelay.Spawnflags = 256u;
         handle.ModelRelay.SetModel(player_model);
         handle.ModelRelay.DispatchSpawn();
         if(handle.ModelRelay.Entity != null)handle.ModelRelay.Entity.Name = uniqueName_ModelRelay;
-        handle.ModelRelay.Spawnflags = 256u;
         handle.ModelRelay.RenderMode = RenderMode_t.kRenderNone;
         handle.ModelRelay.Collision.CollisionGroup = (byte)CollisionGroup.COLLISION_GROUP_NONE;
 
@@ -408,35 +406,38 @@ public class Helper
 
     private static void EnsureViewerGlows(Globals.PlayerDataClass handle, CCSPlayerController target, string playerModel)
     {
+        var desiredColors = new HashSet<int>();
         foreach (var viewer in GetPlayersController(false))
         {
             if (viewer == null || !viewer.IsValid || viewer.IsBot || viewer.IsHLTV) continue;
             Color desiredColor = MainPlugin.Instance.GetViewerGlowColor(viewer.Slot, target.TeamNum);
-            if (handle.ModelGlows.TryGetValue(viewer.Slot, out var existing) && existing != null && existing.IsValid)
-            {
-                if (existing.Glow.GlowColorOverride.ToArgb() != desiredColor.ToArgb())
-                {
-                    existing.Glow.GlowColorOverride = desiredColor;
-                }
-                continue;
-            }
+            int colorKey = desiredColor.ToArgb();
+            desiredColors.Add(colorKey);
+            if (handle.ModelGlows.TryGetValue(colorKey, out var existing) && existing != null && existing.IsValid) continue;
 
             var glow = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic");
             if (glow == null) continue;
 
-            glow.CBodyComponent!.SceneNode!.Owner!.Entity!.Flags &= ~(1u << 2);
-            glow.Render = Color.FromArgb(1, 0, 0, 0);
+            glow.Spawnflags = 256u;
             glow.SetModel(playerModel);
             glow.DispatchSpawn();
-            if (glow.Entity != null) glow.Entity.Name = $"MG_{target.Slot}_{viewer.Slot}_{Guid.NewGuid():N}";
-            glow.Spawnflags = 256u;
+            if (glow.Entity != null) glow.Entity.Name = $"MG_{target.Slot}_{unchecked((uint)colorKey):X8}_{Guid.NewGuid():N}";
+            glow.Render = Color.FromArgb(1, 0, 0, 0);
             glow.Glow.GlowColorOverride = desiredColor;
             glow.Glow.GlowRange = Configs.Instance.GlowRange;
             glow.Glow.GlowTeam = -1;
             glow.Glow.GlowType = Configs.Instance.GlowType ? 2 : 3;
             glow.Glow.GlowRangeMin = 100;
             glow.AcceptInput("FollowEntity", handle.ModelRelay, glow, "!activator");
-            handle.ModelGlows[viewer.Slot] = glow;
+            handle.ModelGlows[colorKey] = glow;
+        }
+
+        foreach (int staleColor in handle.ModelGlows.Keys.Where(key => !desiredColors.Contains(key)).ToArray())
+        {
+            if (handle.ModelGlows.Remove(staleColor, out var staleGlow) && staleGlow != null && staleGlow.IsValid)
+            {
+                staleGlow.Remove();
+            }
         }
     }
 
@@ -446,11 +447,6 @@ public class Helper
 
         foreach (var data in MainPlugin.Instance.g_Main.Player_Data.Values)
         {
-            if (data.ModelGlows.Remove(viewer.Slot, out var oldGlow) && oldGlow != null && oldGlow.IsValid)
-            {
-                oldGlow.Remove();
-            }
-
             var target = data.Player?.Get_CCSPlayerController_ControlledBot();
             if (target == null || !target.IsValid || !target.IsAlive() || data.ModelRelay == null || !data.ModelRelay.IsValid) continue;
             EnsureViewerGlows(data, target, data.Player_ModelName);
@@ -461,10 +457,9 @@ public class Helper
     {
         foreach (var data in MainPlugin.Instance.g_Main.Player_Data.Values)
         {
-            if (data.ModelGlows.Remove(viewerSlot, out var glow) && glow != null && glow.IsValid)
-            {
-                glow.Remove();
-            }
+            var target = data.Player?.Get_CCSPlayerController_ControlledBot();
+            if (target == null || !target.IsValid || !target.IsAlive() || data.ModelRelay == null || !data.ModelRelay.IsValid) continue;
+            EnsureViewerGlows(data, target, data.Player_ModelName);
         }
     }
 
@@ -481,7 +476,6 @@ public class Helper
     {
         foreach(var players in GetPlayersController(true))
         {
-            if(Configs.Instance.DisableOnWarmUp && IsWarmup()) continue;
             if(players == null || !players.IsValid) continue;
 
             CheckPlayerInGlobals(players);
@@ -539,8 +533,6 @@ public class Helper
         MainPlugin.Instance.HookUserMessage(118, MainPlugin.Instance.OnUserMessage_OnSayText2, HookMode.Pre);
 
         RegisterCssCommands(Configs.Instance.Reload_Plugin.Reload_Plugin_CommandsInGame.ConvertCommands(), "Commands To Reload ESP Plugin", MainPlugin.Instance.Game_UserMessages.CommandsAction_ReloadPlugin);
-        RegisterCssCommands(Configs.Instance.Toggle_ESP.Toggle_ESP_CommandsInGame.ConvertCommands(), "Commands To Toggle On/Off ESP", MainPlugin.Instance.Game_UserMessages.CommandsAction_Toggle_ESP);
-        RegisterCssCommands(Configs.Instance.Give_ESP.Give_ESP_CommandsInGame.ConvertCommands(), "Commands To Give ESP To Players On/Off", MainPlugin.Instance.Game_UserMessages.CommandsAction_Give_ESP);
 
         StartTimer();
     }
@@ -563,7 +555,5 @@ public class Helper
         MainPlugin.Instance.UnhookUserMessage(118, MainPlugin.Instance.OnUserMessage_OnSayText2, HookMode.Pre);
 
         RemoveCssCommands(Configs.Instance.Reload_Plugin.Reload_Plugin_CommandsInGame.ConvertCommands(), MainPlugin.Instance.Game_UserMessages.CommandsAction_ReloadPlugin);
-        RemoveCssCommands(Configs.Instance.Toggle_ESP.Toggle_ESP_CommandsInGame.ConvertCommands(), MainPlugin.Instance.Game_UserMessages.CommandsAction_Toggle_ESP);
-        RemoveCssCommands(Configs.Instance.Give_ESP.Give_ESP_CommandsInGame.ConvertCommands(), MainPlugin.Instance.Game_UserMessages.CommandsAction_Give_ESP);
     }
 }

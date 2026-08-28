@@ -27,8 +27,8 @@ public sealed class ClientPrefs
 
 public partial class MainPlugin : BasePlugin
 {
-    public override string ModuleName => "Show Glow/Esp To Players With Flags";
-    public override string ModuleVersion => "1.1.2";
+    public override string ModuleName => "Always-on ESP Players";
+    public override string ModuleVersion => "1.2.0";
     public override string ModuleAuthor => "Gold KingZ, koiie111";
     public override string ModuleDescription => "https://github.com/koiie111/cs2-ESP-Players-GoldKingZ";
     public static MainPlugin Instance { get; set; } = new();
@@ -152,48 +152,20 @@ public partial class MainPlugin : BasePlugin
 
     public void OnCheckTransmit(CCheckTransmitInfoList infoList)
     {
-        bool onlyEnemy = Configs.Instance.ShowOnlyEnemyTeam && (Configs.Instance.Show_ESP_For == 0 || Configs.Instance.Show_ESP_For == 1);
-
         foreach ((CCheckTransmitInfo info, CCSPlayerController? player) in infoList)
         {
             if (player == null || !player.IsValid) continue;
 
             bool shouldRemoveGlow = false;
 
-            if (_prefs == null)
-            {
-                shouldRemoveGlow = true;
-            }
-            else if (player.IsHLTV)
+            if (player.IsHLTV)
             {
                 if (Configs.Instance.DisableGlowOnGOTV)
                 {
                     shouldRemoveGlow = true;
                 }
             }
-            else
-            {
-                bool hasToggle = _prefs!.TryGetValue(player.Slot, out var prefs) && prefs.Toggle_ESP;
-                bool hasGivenESP = g_Main.Player_Data.TryGetValue(player.Slot, out var viewerData) && viewerData.Gived_ESP;
-
-                if (!hasToggle && !hasGivenESP)
-                {
-                    shouldRemoveGlow = true;
-                }
-            }
-
-            if (!shouldRemoveGlow && Configs.Instance.Show_ESP_For == 1 && player.IsAlive(true))
-            {
-                shouldRemoveGlow = true;
-            }
-
-            if (!shouldRemoveGlow && Configs.Instance.Show_ESP_For == 2 && player.TeamNum > (int)CsTeam.Spectator)
-            {
-                shouldRemoveGlow = true;
-            }
-
             int viewerSlot = player.Slot;
-            byte viewerTeam = player.TeamNum;
 
             foreach (var kv in g_Main.Player_Data)
             {
@@ -221,17 +193,15 @@ public partial class MainPlugin : BasePlugin
                         {
                             remove = true;
                         }
-                        else if (onlyEnemy && viewerTeam == targetPlayer.TeamNum)
-                        {
-                            remove = true;
-                        }
                     }
                 }
 
+                byte targetTeam = data.Player?.Get_CCSPlayerController_ControlledBot()?.TeamNum ?? 0;
+                int desiredColorKey = GetViewerGlowColor(viewerSlot, targetTeam).ToArgb();
                 foreach (var viewerGlow in data.ModelGlows)
                 {
                     var glow = viewerGlow.Value;
-                    if (glow != null && glow.IsValid && (remove || viewerGlow.Key != viewerSlot))
+                    if (glow != null && glow.IsValid && (remove || viewerGlow.Key != desiredColorKey))
                     {
                         info.TransmitEntities.Remove(glow);
                     }
@@ -244,7 +214,7 @@ public partial class MainPlugin : BasePlugin
                 }
 
                 if (hasRelay) info.TransmitEntities.Add(ModelRelay!);
-                if (data.ModelGlows.TryGetValue(viewerSlot, out var personalGlow)
+                if (data.ModelGlows.TryGetValue(desiredColorKey, out var personalGlow)
                     && personalGlow != null
                     && personalGlow.IsValid)
                 {
@@ -291,14 +261,7 @@ public partial class MainPlugin : BasePlugin
         Helper.RemoveViewerGlows(player.Slot);
         _pendingColorInputs.Remove(player.SteamID);
 
-        if(!Configs.Instance.Give_ESP.Give_ESP_SaveOnDisconnect)
-        {
-            if (g_Main.Player_Data.ContainsKey(player.Slot))
-            {
-                g_Main.Player_Data.Remove(player.Slot);
-            }
-        }
-        
+        g_Main.Player_Data.Remove(player.Slot);
 
         return HookResult.Continue;
     }
