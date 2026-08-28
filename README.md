@@ -13,7 +13,7 @@
 
 <a href="https://discord.com/invite/U7AuQhu"><img src="https://discord.com/api/guilds/651838917687115806/widget.png?style=banner2"></a>
 
-# [CS2] ESP-Players-GoldKingZ (1.1.1 fork)
+# [CS2] ESP-Players-GoldKingZ (1.1.2 fork)
 
 Show Glow/Esp To Players With Flags
 

@@ -28,7 +28,7 @@ public sealed class ClientPrefs
 public partial class MainPlugin : BasePlugin
 {
     public override string ModuleName => "Show Glow/Esp To Players With Flags";
-    public override string ModuleVersion => "1.1.1";
+    public override string ModuleVersion => "1.1.2";
     public override string ModuleAuthor => "Gold KingZ, koiie111";
     public override string ModuleDescription => "https://github.com/koiie111/cs2-ESP-Players-GoldKingZ";
     public static MainPlugin Instance { get; set; } = new();
@@ -237,7 +237,19 @@ public partial class MainPlugin : BasePlugin
                     }
                 }
 
-                if (remove && hasRelay) info.TransmitEntities.Remove(ModelRelay!);
+                if (remove)
+                {
+                    if (hasRelay) info.TransmitEntities.Remove(ModelRelay!);
+                    continue;
+                }
+
+                if (hasRelay) info.TransmitEntities.Add(ModelRelay!);
+                if (data.ModelGlows.TryGetValue(viewerSlot, out var personalGlow)
+                    && personalGlow != null
+                    && personalGlow.IsValid)
+                {
+                    info.TransmitEntities.Add(personalGlow);
+                }
             }
         }
     }
