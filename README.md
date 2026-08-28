@@ -13,7 +13,7 @@
 
 <a href="https://discord.com/invite/U7AuQhu"><img src="https://discord.com/api/guilds/651838917687115806/widget.png?style=banner2"></a>
 
-# [CS2] ESP-Players-GoldKingZ (1.1.0 fork)
+# [CS2] ESP-Players-GoldKingZ (1.1.1 fork)
 
 Show Glow/Esp To Players With Flags
 
@@ -47,6 +47,8 @@ Show Glow/Esp To Players With Flags
 ### Personal glow colors
 
 Players can type `!color` to open a WASD menu and configure separate personal glow colors for Counter-Terrorists and Terrorists. Every preset is rendered in its actual color before selection. The custom option accepts exactly `#RRGGBB` in chat and applies it immediately; the chat message containing the HEX value is hidden from other players.
+
+The menu always registers readable control hints (`W/S` navigate, `E` select, `Shift` back, `Tab` close) in Russian and English, even when the corresponding CS2MenuManager language section is missing from its `config.toml`.
 
 Color preferences are persisted by ClientPrefs-GoldKingZ. Install CS2MenuManager 1.0.43 or newer in `addons/counterstrikesharp/` before loading this plugin.
 

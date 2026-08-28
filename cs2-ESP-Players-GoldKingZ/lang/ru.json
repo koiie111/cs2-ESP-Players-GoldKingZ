@@ -1,4 +1,24 @@
 {
+	"PrintToChatToPlayer.ReloadPlugin.Not.Allowed": "{green}[ESP] {darkred}У вас недостаточно прав",
+	"PrintToChatToPlayer.ReloadPlugin.Successfully": "{green}[ESP] {grey}Плагин {lime}успешно перезагружен",
+
+	"PrintToChatToPlayer.Toggle.ESP.Not.Allowed": "{green}[ESP] {darkred}У вас недостаточно прав для использования этой команды",
+	"PrintToChatToPlayer.Toggle.ESP.Enabled": "{green}[ESP] {grey}Подсветка игроков {lime}включена",
+	"PrintToChatToPlayer.Toggle.ESP.Disabled": "{green}[ESP] {grey}Подсветка игроков {darkred}выключена",
+
+	"PrintToChatToPlayer.Give.ESP.Not.Allowed": "{green}[ESP] {darkred}У вас недостаточно прав для использования этой команды",
+	"PrintToChatToPlayer.Give.ESP.Usage": "{green}[ESP] {grey}Использование: {lime}{0} <имя|#userid|@all|@ct|@t|@me|@aim> <1/0/true/false> {nextline} {grey}- Без значения — проверить текущее состояние",
+	"PrintToChatToPlayer.Give.ESP.NoTarget": "{green}[ESP] {darkred}Игрок по запросу {lime}{0} {darkred}не найден",
+	"PrintToChatToPlayer.Give.ESP.Status": "{green}[ESP] {grey}ESP игрока {purple}{0} {grey}сейчас: {1}",
+	"PrintToChatToPlayer.Give.ESP.Check.Console": "{green}[ESP] {grey}Найдено слишком много игроков. Полный список выведен в {lime}игровую консоль",
+	"PrintToChatToPlayer.Give.ESP.Set": "{green}[ESP] {grey}ESP игрока {purple}{0}{grey}: {1}",
+	"PrintToChatToPlayer.Give.ESP.Received": "{green}[ESP] {grey}Администратор {purple}{0} {grey}изменил состояние вашего ESP: {1}",
+	"PrintToChatToPlayer.Give.ESP.State.Enabled": "{lime}Включён",
+	"PrintToChatToPlayer.Give.ESP.State.Disabled": "{darkred}Выключен",
+	"PrintToConsoleToPlayer.Give.ESP.List.Header": "[ESP Players] Состояние ESP (игроков: {0}):",
+	"PrintToConsoleToPlayer.Give.ESP.List.Enabled": "  {0} : включён",
+	"PrintToConsoleToPlayer.Give.ESP.List.Disabled": "  {0} : выключен",
+
 	"Color.Menu.Title": "Персональный цвет ESP-подсветки",
 	"Color.Menu.CT": "Спецназ",
 	"Color.Menu.T": "Террористы",
