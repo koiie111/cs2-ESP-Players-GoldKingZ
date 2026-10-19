@@ -427,7 +427,7 @@ public class Helper
             glow.Glow.GlowRange = Configs.Instance.GlowRange;
             glow.Glow.GlowTeam = -1;
             glow.Glow.GlowType = Configs.Instance.GlowType ? 2 : 3;
-            glow.Glow.GlowRangeMin = 100;
+            glow.Glow.GlowRangeMin = 0;
             glow.AcceptInput("FollowEntity", handle.ModelRelay, glow, "!activator");
             handle.ModelGlows[colorKey] = glow;
         }
