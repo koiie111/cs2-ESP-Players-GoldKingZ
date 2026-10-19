@@ -197,6 +197,15 @@ public partial class MainPlugin : BasePlugin
                 }
 
                 byte targetTeam = data.Player?.Get_CCSPlayerController_ControlledBot()?.TeamNum ?? 0;
+
+                if (!remove
+                    && Configs.Instance.ShowOnlyEnemyTeam
+                    && (player.TeamNum == (byte)CsTeam.CounterTerrorist || player.TeamNum == (byte)CsTeam.Terrorist)
+                    && targetTeam == player.TeamNum)
+                {
+                    remove = true;
+                }
+
                 int desiredColorKey = GetViewerGlowColor(viewerSlot, targetTeam).ToArgb();
                 foreach (var viewerGlow in data.ModelGlows)
                 {

@@ -75,7 +75,7 @@ Color preferences are persisted by ClientPrefs-GoldKingZ. Install CS2MenuManager
 | `DisableOnWarmUp` | Legacy setting retained for config compatibility; ignored in 1.2.0+ | - | - |
 | `DisableGlowOnGOTV` | Disable glow in demo GOTV/HLTV | `true`/`false` | - |
 | `Show_ESP_For` | Legacy setting retained for config compatibility; ignored in 1.2.0+ | - | - |
-| `ShowOnlyEnemyTeam` | Legacy setting retained for config compatibility; ignored in 1.2.0+ | - | - |
+| `ShowOnlyEnemyTeam` | Show ESP only for the enemy team (teammates are not highlighted for CT/T viewers) | `true` = Enemies only<br>`false` = Show all | - |
  
 </details>
 <details>
