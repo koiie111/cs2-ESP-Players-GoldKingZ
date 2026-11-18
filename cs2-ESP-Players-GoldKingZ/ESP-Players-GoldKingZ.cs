@@ -49,7 +49,7 @@ public partial class MainPlugin : BasePlugin
 
         Helper.RemoveRegisterCommandsAndHooks();
         Helper.ClearVariables();
-        Helper.RegisterCommandsAndHooks();
+        if (g_EnablePlugin.Value) Helper.RegisterCommandsAndHooks();
 
         g_EnablePlugin.ValueChanged += (sender, value) =>
         {
@@ -71,8 +71,11 @@ public partial class MainPlugin : BasePlugin
         {
             Helper.RemoveRegisterCommandsAndHooks();
             Helper.ClearVariables();
-            Helper.RegisterCommandsAndHooks();
-            Helper.ReloadPlayersGlobals();
+            if (g_EnablePlugin.Value)
+            {
+                Helper.RegisterCommandsAndHooks();
+                Helper.ReloadPlayersGlobals();
+            }
         }
     }
 
@@ -116,14 +119,9 @@ public partial class MainPlugin : BasePlugin
         }
     }
 
-    public void OnMapStart(string mapname)
-    {
-        Helper.StartTimer();
-    }
-
     public HookResult OnEventRoundStart(EventRoundStart @event, GameEventInfo info)
     {
-        if (@event == null) return HookResult.Continue;
+        if (@event == null || !_runtimeActive) return HookResult.Continue;
 
         Helper.StartTimer();
 
@@ -135,49 +133,9 @@ public partial class MainPlugin : BasePlugin
         var player = Utilities.GetPlayerFromSlot(playerSlot);
         if(player == null || !player.IsValid)return;
 
+        _pendingColorInputs.Remove(playerSlot);
         Helper.CheckPlayerInGlobals(player);
         ScheduleEspReconcile();
-    }
-
-    public HookResult OnEspSpawn(EventPlayerSpawn ev, GameEventInfo info)
-    {
-        var player = ev.Userid;
-        if (player == null || !player.IsValid) return HookResult.Continue;
-        var identity = player.EntityHandle.Raw;
-        int generation = _runtimeGeneration;
-        Server.NextFrame(() =>
-        {
-            if (generation != _runtimeGeneration || !g_EnablePlugin.Value || !player.IsValid || player.EntityHandle.Raw != identity) return;
-            Helper.CheckPlayerInGlobals(player);
-            Helper.SetGlowPlayer(player);
-        });
-        return HookResult.Continue;
-    }
-
-    public HookResult OnEspTeam(EventPlayerTeam ev, GameEventInfo info)
-    {
-        ScheduleEspReconcile();
-        return HookResult.Continue;
-    }
-
-    public HookResult OnEspBotTakeover(EventBotTakeover ev, GameEventInfo info)
-    {
-        ScheduleEspReconcile();
-        return HookResult.Continue;
-    }
-
-    private bool _reconcilePending;
-    private void ScheduleEspReconcile()
-    {
-        if (_reconcilePending) return;
-        _reconcilePending = true;
-        int generation = _runtimeGeneration;
-        Server.NextFrame(() =>
-        {
-            if (generation != _runtimeGeneration) return;
-            _reconcilePending = false;
-            if (g_EnablePlugin.Value) Helper.ESP_Timer();
-        });
     }
 
     public HookResult OnEventPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
@@ -194,7 +152,7 @@ public partial class MainPlugin : BasePlugin
 
     public void OnCheckTransmit(CCheckTransmitInfoList infoList)
     {
-        ApplyTransmitPlans(infoList);
+        if (_runtimeActive) ApplyTransmitPlans(infoList);
     }
     
     public HookResult OnPlayerSay(CCSPlayerController? player, CommandInfo info)
@@ -223,22 +181,6 @@ public partial class MainPlugin : BasePlugin
         return HookResult.Continue;
     }
 
-    public HookResult OnEventPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
-    {
-        if (@event == null) return HookResult.Continue;
-
-        var player = @event.Userid;
-        if(player == null || !player.IsValid) return HookResult.Continue;
-
-        Helper.RemoveGlow(player);
-        g_Main.Player_Data.Remove(player.Slot);
-        ForgetViewer(player.Slot);
-        Helper.RemoveViewerGlows(player.Slot);
-        _pendingColorInputs.Remove(player.SteamID);
-
-        return HookResult.Continue;
-    }
-    
     public void OnMapEnd()
     {
         try
@@ -253,27 +195,20 @@ public partial class MainPlugin : BasePlugin
 
     public override void Unload(bool hotReload)
     {
+        StopEspRuntime();
         try
         {
             _prefs?.Unload();
-            Helper.RemoveRegisterCommandsAndHooks();
-            Helper.ClearVariables();
         }
-        catch (Exception ex)
-        {
-            Helper.DebugMessage($"Unload Error: {ex.Message}", true);
-        }
-
-        if (hotReload)
+        finally
         {
             try
             {
                 Helper.RemoveRegisterCommandsAndHooks();
-                Helper.ClearVariables();
             }
-            catch (Exception ex)
+            finally
             {
-                Helper.DebugMessage($"Unload hotReload Error: {ex.Message}", true);
+                Helper.ClearVariables();
             }
         }
     }

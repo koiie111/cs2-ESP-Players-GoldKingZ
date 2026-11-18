@@ -37,7 +37,7 @@ public partial class MainPlugin
         "^#(?<hex>[0-9a-fA-F]{6})$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    private readonly Dictionary<ulong, GlowTeamChoice> _pendingColorInputs = new();
+    private readonly Dictionary<int, GlowTeamChoice> _pendingColorInputs = new();
 
     [ConsoleCommand("css_color", "Open the personal ESP glow color menu")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
@@ -53,7 +53,7 @@ public partial class MainPlugin
             return;
         }
 
-        _pendingColorInputs.Remove(player.SteamID);
+        _pendingColorInputs.Remove(player.Slot);
         ShowColorTeamMenu(player);
     }
 
@@ -102,7 +102,7 @@ public partial class MainPlugin
 
         menu.AddItem(Localizer.ForPlayer(player, "Color.Menu.Custom"), (selectedPlayer, _) =>
         {
-            _pendingColorInputs[selectedPlayer.SteamID] = team;
+            _pendingColorInputs[selectedPlayer.Slot] = team;
             PrintColorMessage(selectedPlayer, "Color.Custom.Prompt");
             PrintColorMessage(selectedPlayer, "Color.Custom.Picker");
         });
@@ -112,7 +112,7 @@ public partial class MainPlugin
 
     public HookResult OnColorInput(CCSPlayerController? player, CommandInfo info)
     {
-        if (player == null || !player.IsValid || !_pendingColorInputs.TryGetValue(player.SteamID, out var team))
+        if (player == null || !player.IsValid || !_pendingColorInputs.TryGetValue(player.Slot, out var team))
         {
             return HookResult.Continue;
         }
@@ -122,7 +122,7 @@ public partial class MainPlugin
             || message.Equals("!cancel", StringComparison.OrdinalIgnoreCase)
             || message.Equals("отмена", StringComparison.OrdinalIgnoreCase))
         {
-            _pendingColorInputs.Remove(player.SteamID);
+            _pendingColorInputs.Remove(player.Slot);
             PrintColorMessage(player, "Color.Custom.Cancelled");
             return HookResult.Handled;
         }
@@ -133,7 +133,7 @@ public partial class MainPlugin
             return HookResult.Handled;
         }
 
-        _pendingColorInputs.Remove(player.SteamID);
+        _pendingColorInputs.Remove(player.Slot);
         ApplyGlowColor(player, team, normalizedHex);
         return HookResult.Handled;
     }

@@ -79,9 +79,80 @@ static class Program
         }
         return (created, removed);
     }
+    static void CheckLifecycle()
+    {
+        var plugin = new MainPlugin();
+        MainPlugin.Instance = plugin;
+        plugin.StartEspRuntime();
+        plugin.BeginInput(5);
+        plugin.QueueReconcile();
+        plugin.QueueReconcile();
+        if (CounterStrikeSharp.API.Server.Frames.Count != 1) throw new Exception("Reconcile was not coalesced");
+        var oldTimer = plugin.CreateEspTimer();
+        plugin.StopEspRuntime();
+        if (plugin.PendingInputs != 0) throw new Exception("Pending chat input survived map end");
+        CounterStrikeSharp.API.Server.Flush();
+        oldTimer.Fire();
+        if (Helper.Reconciles != 0) throw new Exception("Stopped runtime executed old callbacks");
+
+        plugin.StartEspRuntime();
+        plugin.QueueReconcile();
+        var oldWorldProp = Prop(4321);
+        plugin.TrackEspEntity(oldWorldProp);
+        plugin.g_Main.Player_Data[9] = new PlayerData { ModelRelay = oldWorldProp };
+        plugin.OnMapStart("new_map");
+        if (oldWorldProp.RemoveCalls != 0 || plugin.TrackedCount != 0 || plugin.g_Main.Player_Data.Count != 0)
+            throw new Exception("Map start touched old-world native entities");
+        CounterStrikeSharp.API.Server.Flush();
+        if (Helper.Reconciles != 1) throw new Exception("Map change executed stale reconciliation");
+        oldTimer.Fire();
+        if (Helper.Reconciles != 1) throw new Exception("Old timer crossed map generation");
+        plugin.g_Main.Timer.Fire();
+        if (Helper.Reconciles != 2) throw new Exception("New map timer did not run");
+
+        var oldPlayer = new CCSPlayerController { Slot = 5, TeamNum = 2, EntityHandle = (100, 5) };
+        plugin.OnEspSpawn(new EventPlayerSpawn { Userid = oldPlayer }, new GameEventInfo());
+        plugin.BeginInput(5);
+        plugin.OnEspClientDisconnect(5);
+        if (plugin.PendingInputs != 0 || plugin.g_Main.Player_Data.ContainsKey(5)) throw new Exception("Disconnect retained slot state");
+        // The old wrapper can remain valid until the native disconnect finishes.
+        var replacement = new CCSPlayerController { Slot = 5, TeamNum = 3, EntityHandle = (200, 5) };
+        plugin.g_Main.Player_Data[5] = new PlayerData { Player = replacement };
+        CounterStrikeSharp.API.Server.Flush();
+        if (Helper.Spawns != 0) throw new Exception("Old connection spawned props after slot reuse");
+        plugin.OnEspSpawn(new EventPlayerSpawn { Userid = replacement }, new GameEventInfo());
+        CounterStrikeSharp.API.Server.Flush();
+        if (Helper.Spawns != 1) throw new Exception("Replacement connection could not spawn");
+
+        var deleted = Prop(1234);
+        plugin.TrackEspEntity(deleted);
+        plugin.OnEspEntityDeleted(deleted);
+        if (plugin.IsEspEntityAlive(deleted)) throw new Exception("Deleted entity still owned before invalidation");
+        plugin.RemoveEspEntity(deleted);
+        if (deleted.RemoveCalls != 0) throw new Exception("Deleted entity removed twice");
+        int frames = CounterStrikeSharp.API.Server.Frames.Count;
+        plugin.OnEspEntityDeleted(deleted);
+        if (CounterStrikeSharp.API.Server.Frames.Count != frames) throw new Exception("Duplicate deletion queued extra work");
+        CounterStrikeSharp.API.Server.Flush();
+        plugin.TrackEspEntity(deleted);
+        plugin.RemoveEspEntity(deleted);
+        plugin.OnEspEntityDeleted(deleted);
+        if (deleted.RemoveCalls != 1 || CounterStrikeSharp.API.Server.Frames.Count != 0) throw new Exception("Owned cleanup retriggered repair");
+        for (int i = 0; i < 10000; i++)
+        {
+            var prop = Prop(5000 + i);
+            plugin.TrackEspEntity(prop);
+            plugin.OnEspEntityDeleted(prop);
+        }
+        if (plugin.TrackedCount != 0) throw new Exception("Deleted handles accumulated");
+        CounterStrikeSharp.API.Server.Flush();
+        plugin.StopEspRuntime();
+        Console.WriteLine("PASS actual lifecycle callbacks: map generations, old/new timers, coalescing, disconnect with valid old wrapper, slot reuse, pending chat, duplicate/native deletion, owned cleanup");
+    }
     static void Main()
     {
         System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+        CheckLifecycle();
         Console.WriteLine("case,mean_us,p95_us,p99_us,bytes_per_call");
         foreach (int count in new[] { 1, 24, 64 })
         foreach (int palette in new[] { 1, 4, 64 })
@@ -101,6 +172,11 @@ static class Program
             {
                 int color = plugin.GetViewerGlowColor(viewer.Item2!.Slot, data.Player.TeamNum).ToArgb();
                 if (!data.ModelGlows.ContainsKey(color)) data.ModelGlows[color] = Prop(id++);
+            }
+            foreach (var data in plugin.g_Main.Player_Data.Values)
+            {
+                plugin.TrackEspEntity(data.ModelRelay!);
+                foreach (var glow in data.ModelGlows.Values) plugin.TrackEspEntity(glow);
             }
             foreach (bool enemy in new[] { false, true })
             foreach (bool gotv in new[] { false, true })
@@ -137,12 +213,24 @@ static class Program
             plugin.Run(infos);
             foreach (var info in infos) if (info.Item1.TransmitEntities.Contains((int)deleted.Index)) throw new Exception("Deleted entity leaked");
             deleted.IsValid = false; Equal(plugin, infos);
-            first.ModelRelay = Prop((int)deleted.Index); first.ModelRelay.EntityHandle = (900000, (int)deleted.Index); Equal(plugin, infos);
+            first.ModelRelay = Prop((int)deleted.Index); first.ModelRelay.EntityHandle = (900000, (int)deleted.Index); plugin.TrackEspEntity(first.ModelRelay); Equal(plugin, infos);
             plugin._prefs[0].Glow_Color_CT = "#ABCDEF"; Equal(plugin, infos);
             plugin._prefs.Remove(0); Equal(plugin, infos);
             if (Reconcile(plugin, false, oldEntities) != Reconcile(plugin, true, newEntities)) throw new Exception("Last color viewer mismatch");
             plugin.ForgetViewer(0); Equal(plugin, infos);
-            plugin.ClearTransmitCache(); Equal(plugin, infos);
+            plugin.ClearTransmitCache();
+            // A new world may reuse the exact same raw handle. Old wrappers remain unowned.
+            foreach (var info in infos) info.Item1.TransmitEntities.Clear();
+            plugin.Run(infos);
+            if (infos.Any(info => info.Item1.TransmitEntities.Count != 0)) throw new Exception("Old world entities transmitted");
+            plugin.RemoveEspEntity(first.ModelRelay);
+            if (first.ModelRelay.RemoveCalls != 0) throw new Exception("Unowned reused entity removed");
+            foreach (var data in plugin.g_Main.Player_Data.Values)
+            {
+                if (data.ModelRelay!.IsValid) plugin.TrackEspEntity(data.ModelRelay);
+                foreach (var glow in data.ModelGlows.Values) plugin.TrackEspEntity(glow);
+            }
+            Equal(plugin, infos);
         }
         Console.WriteLine("PASS visibility, teams, HLTV, spectators, controlled bots, empty/full initial bits, colors, late prefs, deletion, serial reuse, cache reset");
     }

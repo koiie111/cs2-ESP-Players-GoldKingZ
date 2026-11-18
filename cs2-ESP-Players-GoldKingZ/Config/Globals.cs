@@ -30,8 +30,15 @@ public class Globals
 
     public void Clear()
     {
-        Timer?.Kill();
+        var timer = Timer;
         Timer = null!;
-        Helper.RemoveAllPlayersGlow();
+        try
+        {
+            timer?.Kill();
+        }
+        finally
+        {
+            Helper.RemoveAllPlayersGlow();
+        }
     }
 }

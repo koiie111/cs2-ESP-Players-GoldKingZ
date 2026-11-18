@@ -17,15 +17,15 @@ All durations are microseconds per complete recipient list. Palette is the numbe
 
 | Players | Palette | Before mean | Cached mean | Before p99 | Cached p99 | Before bytes | Cached bytes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 1 | 0.237 | 0.518 | 0.500 | 0.600 | 40 | 0 |
-| 1 | 4 | 0.234 | 0.537 | 0.300 | 0.600 | 40 | 0 |
-| 1 | 64 | 0.236 | 0.546 | 0.300 | 0.600 | 40 | 0 |
-| 24 | 1 | 88.761 | 18.377 | 145.200 | 20.800 | 23040 | 0 |
-| 24 | 4 | 49.777 | 7.176 | 68.900 | 11.800 | 23040 | 0 |
-| 24 | 64 | 86.803 | 34.180 | 159.600 | 38.200 | 23040 | 0 |
-| 64 | 1 | 312.037 | 18.866 | 380.300 | 29.900 | 163840 | 0 |
-| 64 | 4 | 347.078 | 46.976 | 430.200 | 60.900 | 163840 | 0 |
-| 64 | 64 | 1273.020 | 675.209 | 1482.300 | 718.200 | 163840 | 0 |
+| 1 | 1 | 0.228 | 0.571 | 0.400 | 0.700 | 40 | 0 |
+| 1 | 4 | 0.231 | 0.618 | 0.300 | 0.700 | 40 | 0 |
+| 1 | 64 | 0.237 | 0.581 | 0.300 | 0.700 | 40 | 0 |
+| 24 | 1 | 94.022 | 20.536 | 145.400 | 22.600 | 23040 | 0 |
+| 24 | 4 | 66.979 | 7.373 | 75.100 | 11.600 | 23040 | 0 |
+| 24 | 64 | 105.866 | 35.545 | 166.400 | 39.600 | 23040 | 0 |
+| 64 | 1 | 312.585 | 19.045 | 369.900 | 22.900 | 163840 | 0 |
+| 64 | 4 | 347.003 | 47.637 | 420.000 | 54.900 | 163840 | 0 |
+| 64 | 64 | 1279.511 | 695.865 | 1453.900 | 837.700 | 163840 | 0 |
 
 ## Coverage and implementation decisions
 
@@ -36,3 +36,9 @@ The production handler samples target validity, controlled team and current prop
 A single-player callback has higher overhead in this harness. Unique colors at maximum population still require many transmit bit operations and glow entities. Native CS2 measurements remain necessary to assess the complete gain and spikes.
 
 Release build passed with the pinned CounterStrikeSharp.API 1.0.373. NuGet reports an existing transitive MySqlConnector 2.4.0 vulnerability warning NU1902. No dependency versions were changed.
+
+## Follow-up lifecycle review
+
+The harness now also compiles production Lifecycle.cs. Assertions exercise map-generation invalidation, old versus new timers, coalesced work, pending HEX chat cancellation, disconnect while the old controller wrapper is still valid, slot reuse before queued spawn runs, deletion before wrapper invalidation, duplicate deletion, owned cleanup and 10,000 deleted handles without retained tombstones. OnMapStart is tested with live-looking wrappers from the old world and must discard them without calling native removal.
+
+Cleanup invalidates callbacks before disposing resources. Timer references are reset before Kill, prop references are detached before removal, and finally blocks ensure cache/hook cleanup after provider or timer exceptions. These exception paths and native creation rollback are covered by code inspection and Release compilation. The local harness still substitutes engine operations and does not exercise a real map transition or provider implementation.

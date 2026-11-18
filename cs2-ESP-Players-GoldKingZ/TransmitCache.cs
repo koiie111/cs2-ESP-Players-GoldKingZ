@@ -35,7 +35,6 @@ public partial class MainPlugin
     private readonly List<GlowState> _nextGlows = new();
     private readonly Dictionary<int, ViewerColors> _viewerColors = new();
     private readonly Dictionary<int, TransmitPlan> _transmitPlans = new();
-    private readonly HashSet<uint> _deletedEntities = new();
     private int _runtimeGeneration;
     private bool _enemyOnly;
     private bool _disableGotv;
@@ -80,7 +79,6 @@ public partial class MainPlugin
         _transmitPlans.Clear();
         _targets.Clear();
         _glows.Clear();
-        _deletedEntities.Clear();
         _trackedEntities.Clear();
     }
 
@@ -88,17 +86,26 @@ public partial class MainPlugin
     {
         uint raw = entity.EntityHandle.Raw;
         if (!_trackedEntities.Remove(raw)) return;
-        _deletedEntities.Add(raw);
         _transmitPlans.Clear();
+        ScheduleEspReconcile();
     }
 
     private readonly HashSet<uint> _trackedEntities = new();
 
     public void TrackEspEntity(CDynamicProp prop) => _trackedEntities.Add(prop.EntityHandle.Raw);
 
+    public bool IsEspEntityAlive(CDynamicProp? prop)
+        => prop != null && prop.IsValid && _trackedEntities.Contains(prop.EntityHandle.Raw);
+
+    public void RemoveEspEntity(CDynamicProp? prop)
+    {
+        if (prop == null || !_trackedEntities.Remove(prop.EntityHandle.Raw)) return;
+        _transmitPlans.Clear();
+        if (prop.IsValid) prop.Remove();
+    }
+
     private int LiveIndex(CDynamicProp? prop)
-        => prop != null && prop.IsValid && !_deletedEntities.Contains(prop.EntityHandle.Raw)
-            ? (int)prop.Index : -1;
+        => IsEspEntityAlive(prop) ? (int)prop!.Index : -1;
 
     private void CaptureTargets()
     {

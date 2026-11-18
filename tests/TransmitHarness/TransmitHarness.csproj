@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../cs2-ESP-Players-GoldKingZ/TransmitCache.cs" Link="TransmitCache.cs" />
+    <Compile Include="../../cs2-ESP-Players-GoldKingZ/Lifecycle.cs" Link="Lifecycle.cs" />
   </ItemGroup>
 </Project>
