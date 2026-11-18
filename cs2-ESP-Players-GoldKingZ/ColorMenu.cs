@@ -37,13 +37,13 @@ public partial class MainPlugin
         "^#(?<hex>[0-9a-fA-F]{6})$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    private readonly Dictionary<ulong, GlowTeamChoice> _pendingColorInputs = new();
+    private readonly Dictionary<int, GlowTeamChoice> _pendingColorInputs = new();
 
     [ConsoleCommand("css_color", "Open the personal ESP glow color menu")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnColorCommand(CCSPlayerController? player, CommandInfo info)
     {
-        if (player == null || !player.IsValid) return;
+        if (!_runtimeActive || player == null || !player.IsValid) return;
 
         EnsureMenuControlTranslations();
 
@@ -53,7 +53,7 @@ public partial class MainPlugin
             return;
         }
 
-        _pendingColorInputs.Remove(player.SteamID);
+        _pendingColorInputs.Remove(player.Slot);
         ShowColorTeamMenu(player);
     }
 
@@ -102,7 +102,8 @@ public partial class MainPlugin
 
         menu.AddItem(Localizer.ForPlayer(player, "Color.Menu.Custom"), (selectedPlayer, _) =>
         {
-            _pendingColorInputs[selectedPlayer.SteamID] = team;
+            if (!_runtimeActive) return;
+            _pendingColorInputs[selectedPlayer.Slot] = team;
             PrintColorMessage(selectedPlayer, "Color.Custom.Prompt");
             PrintColorMessage(selectedPlayer, "Color.Custom.Picker");
         });
@@ -110,9 +111,12 @@ public partial class MainPlugin
         menu.Display(player, 0);
     }
 
+    // CounterStrikeSharp keys command listeners by delegate. Each registration needs its own method.
+    public HookResult OnTeamColorInput(CCSPlayerController? player, CommandInfo info) => OnColorInput(player, info);
+
     public HookResult OnColorInput(CCSPlayerController? player, CommandInfo info)
     {
-        if (player == null || !player.IsValid || !_pendingColorInputs.TryGetValue(player.SteamID, out var team))
+        if (player == null || !player.IsValid || !_pendingColorInputs.TryGetValue(player.Slot, out var team))
         {
             return HookResult.Continue;
         }
@@ -122,7 +126,7 @@ public partial class MainPlugin
             || message.Equals("!cancel", StringComparison.OrdinalIgnoreCase)
             || message.Equals("отмена", StringComparison.OrdinalIgnoreCase))
         {
-            _pendingColorInputs.Remove(player.SteamID);
+            _pendingColorInputs.Remove(player.Slot);
             PrintColorMessage(player, "Color.Custom.Cancelled");
             return HookResult.Handled;
         }
@@ -133,13 +137,14 @@ public partial class MainPlugin
             return HookResult.Handled;
         }
 
-        _pendingColorInputs.Remove(player.SteamID);
+        _pendingColorInputs.Remove(player.Slot);
         ApplyGlowColor(player, team, normalizedHex);
         return HookResult.Handled;
     }
 
     private bool ApplyGlowColor(CCSPlayerController player, GlowTeamChoice team, string hex)
     {
+        if (!_runtimeActive) return false;
         if (_prefs == null || !_prefs.TryGetValue(player.Slot, out var prefs))
         {
             PrintColorMessage(player, "Color.PrefsUnavailable");
@@ -155,13 +160,13 @@ public partial class MainPlugin
             prefs.Glow_Color_T = hex;
         }
 
-        Helper.RefreshViewerGlows(player);
+        ScheduleEspReconcile();
         string teamName = Localizer.ForPlayer(player, team == GlowTeamChoice.CounterTerrorist ? "Color.Menu.CT" : "Color.Menu.T");
         Helper.AdvancedPlayerPrintToChat(player, null!, Localizer.ForPlayer(player, "Color.Applied"), teamName, hex);
         return true;
     }
 
-    public Color GetViewerGlowColor(int viewerSlot, byte targetTeam)
+    private Color ParseViewerGlowColor(int viewerSlot, byte targetTeam)
     {
         string hex = GetEffectiveGlowHex(viewerSlot, targetTeam);
         return TryNormalizeHex(hex, out string normalizedHex)

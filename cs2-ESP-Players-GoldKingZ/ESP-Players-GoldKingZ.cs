@@ -41,7 +41,6 @@ public partial class MainPlugin : BasePlugin
     public override void Load(bool hotReload)
     {
         Instance = this;
-        RegisterFakeConVars(typeof(ConVar));
         Configs.Load(ModuleDirectory, hotReload);
 
         _api = new ESPPlayersApiImpl();
@@ -49,7 +48,11 @@ public partial class MainPlugin : BasePlugin
 
         Helper.RemoveRegisterCommandsAndHooks();
         Helper.ClearVariables();
-        Helper.RegisterCommandsAndHooks();
+        if (g_EnablePlugin.Value)
+        {
+            Helper.RegisterCommandsAndHooks();
+            if (hotReload) Helper.ReloadPlayersGlobals();
+        }
 
         g_EnablePlugin.ValueChanged += (sender, value) =>
         {
@@ -66,14 +69,6 @@ public partial class MainPlugin : BasePlugin
                 Helper.DebugMessage($"{Con.LightRed}Plugin Has Been Disabled By ConVar [{Con.Purple}{g_EnablePlugin.Name}{Con.LightRed}] Set To {Con.Purple}{g_EnablePlugin.Value}", true);
             }
         };
-
-        if (hotReload)
-        {
-            Helper.RemoveRegisterCommandsAndHooks();
-            Helper.ClearVariables();
-            Helper.RegisterCommandsAndHooks();
-            Helper.ReloadPlayersGlobals();
-        }
     }
 
     public override void OnAllPluginsLoaded(bool hotReload)
@@ -116,14 +111,9 @@ public partial class MainPlugin : BasePlugin
         }
     }
 
-    public void OnMapStart(string mapname)
-    {
-        Helper.StartTimer();
-    }
-
     public HookResult OnEventRoundStart(EventRoundStart @event, GameEventInfo info)
     {
-        if (@event == null) return HookResult.Continue;
+        if (@event == null || !_runtimeActive) return HookResult.Continue;
 
         Helper.StartTimer();
 
@@ -135,7 +125,9 @@ public partial class MainPlugin : BasePlugin
         var player = Utilities.GetPlayerFromSlot(playerSlot);
         if(player == null || !player.IsValid)return;
 
+        _pendingColorInputs.Remove(playerSlot);
         Helper.CheckPlayerInGlobals(player);
+        ScheduleEspReconcile();
     }
 
     public HookResult OnEventPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
@@ -152,85 +144,7 @@ public partial class MainPlugin : BasePlugin
 
     public void OnCheckTransmit(CCheckTransmitInfoList infoList)
     {
-        foreach ((CCheckTransmitInfo info, CCSPlayerController? player) in infoList)
-        {
-            if (player == null || !player.IsValid) continue;
-
-            bool shouldRemoveGlow = false;
-
-            if (player.IsHLTV)
-            {
-                if (Configs.Instance.DisableGlowOnGOTV)
-                {
-                    shouldRemoveGlow = true;
-                }
-            }
-            int viewerSlot = player.Slot;
-
-            foreach (var kv in g_Main.Player_Data)
-            {
-                var data = kv.Value;
-                if (data == null) continue;
-
-                var ModelRelay = data.ModelRelay;
-
-                bool hasRelay = ModelRelay != null && ModelRelay.IsValid;
-                bool hasAnyGlow = data.ModelGlows.Values.Any(glow => glow != null && glow.IsValid);
-                if (!hasAnyGlow && !hasRelay) continue;
-
-                bool remove = shouldRemoveGlow;
-
-                if (!remove)
-                {
-                    if (kv.Key == viewerSlot)
-                    {
-                        remove = true;
-                    }
-                    else
-                    {
-                        var targetPlayer = data.Player;
-                        if (targetPlayer == null || !targetPlayer.IsValid)
-                        {
-                            remove = true;
-                        }
-                    }
-                }
-
-                byte targetTeam = data.Player?.Get_CCSPlayerController_ControlledBot()?.TeamNum ?? 0;
-
-                if (!remove
-                    && Configs.Instance.ShowOnlyEnemyTeam
-                    && (player.TeamNum == (byte)CsTeam.CounterTerrorist || player.TeamNum == (byte)CsTeam.Terrorist)
-                    && targetTeam == player.TeamNum)
-                {
-                    remove = true;
-                }
-
-                int desiredColorKey = GetViewerGlowColor(viewerSlot, targetTeam).ToArgb();
-                foreach (var viewerGlow in data.ModelGlows)
-                {
-                    var glow = viewerGlow.Value;
-                    if (glow != null && glow.IsValid && (remove || viewerGlow.Key != desiredColorKey))
-                    {
-                        info.TransmitEntities.Remove(glow);
-                    }
-                }
-
-                if (remove)
-                {
-                    if (hasRelay) info.TransmitEntities.Remove(ModelRelay!);
-                    continue;
-                }
-
-                if (hasRelay) info.TransmitEntities.Add(ModelRelay!);
-                if (data.ModelGlows.TryGetValue(desiredColorKey, out var personalGlow)
-                    && personalGlow != null
-                    && personalGlow.IsValid)
-                {
-                    info.TransmitEntities.Add(personalGlow);
-                }
-            }
-        }
+        if (_runtimeActive) ApplyTransmitPlans(infoList);
     }
     
     public HookResult OnPlayerSay(CCSPlayerController? player, CommandInfo info)
@@ -259,22 +173,6 @@ public partial class MainPlugin : BasePlugin
         return HookResult.Continue;
     }
 
-    public HookResult OnEventPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
-    {
-        if (@event == null) return HookResult.Continue;
-
-        var player = @event.Userid;
-        if(player == null || !player.IsValid) return HookResult.Continue;
-
-        Helper.RemoveGlow(player);
-        Helper.RemoveViewerGlows(player.Slot);
-        _pendingColorInputs.Remove(player.SteamID);
-
-        g_Main.Player_Data.Remove(player.Slot);
-
-        return HookResult.Continue;
-    }
-    
     public void OnMapEnd()
     {
         try
@@ -289,27 +187,20 @@ public partial class MainPlugin : BasePlugin
 
     public override void Unload(bool hotReload)
     {
+        StopEspRuntime();
         try
         {
             _prefs?.Unload();
-            Helper.RemoveRegisterCommandsAndHooks();
-            Helper.ClearVariables();
         }
-        catch (Exception ex)
-        {
-            Helper.DebugMessage($"Unload Error: {ex.Message}", true);
-        }
-
-        if (hotReload)
+        finally
         {
             try
             {
                 Helper.RemoveRegisterCommandsAndHooks();
-                Helper.ClearVariables();
             }
-            catch (Exception ex)
+            finally
             {
-                Helper.DebugMessage($"Unload hotReload Error: {ex.Message}", true);
+                Helper.ClearVariables();
             }
         }
     }
