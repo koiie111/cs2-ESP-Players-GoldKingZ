@@ -15,7 +15,7 @@ using CounterStrikeSharp.API.Modules.Entities.Constants;
 
 namespace ESP_Players_GoldKingZ;
 
-public class Helper
+public partial class Helper
 {
     public static void RegisterCssCommands(string[]? commands, string description, CommandInfo.CommandCallback callback)
     {
@@ -368,7 +368,7 @@ public class Helper
         }
     }
 
-    public static void SetGlowPlayer(CCSPlayerController Getplayer, Dictionary<int, Color>[]? colors = null)
+    private static void SetGlowPlayer(CCSPlayerController Getplayer, GlowDemand colors)
     {
         var g_Main = MainPlugin.Instance.g_Main;
         if(Getplayer == null 
@@ -390,7 +390,7 @@ public class Helper
 
             if(!ModelChanged && alive && handle.PawnHandle == pawnHandle)
             {
-                EnsureViewerGlows(handle, player, player_model, colors);
+                EnsureViewerGlows(handle, Getplayer.Slot, player, handle.Player_ModelName, colors);
                 return;
             }
 
@@ -417,7 +417,7 @@ public class Helper
 
             handle.ModelRelay.AcceptInput("FollowEntity", pawn, handle.ModelRelay, "!activator");
             handle.Player_ModelName = player_model;
-            EnsureViewerGlows(handle, player, player_model, colors);
+            EnsureViewerGlows(handle, Getplayer.Slot, player, handle.Player_ModelName, colors);
         }
         catch (Exception ex)
         {
@@ -426,28 +426,31 @@ public class Helper
         }
     }
 
-    private static void EnsureViewerGlows(Globals.PlayerDataClass handle, CCSPlayerController target, string playerModel, Dictionary<int, Color>[]? colors = null)
+    private static void EnsureViewerGlows(Globals.PlayerDataClass handle, int slot, CCSPlayerController target, string playerModel, GlowDemand colors)
     {
-        colors ??= CollectViewerColors();
-        var desiredColors = colors[target.TeamNum == (byte)CsTeam.CounterTerrorist ? 0 : 1];
-        foreach (var entry in desiredColors)
+        var desiredColors = colors.ForTeam(target.TeamNum);
+        foreach (var (key, prop) in handle.ModelGlows)
         {
-            Color desiredColor = entry.Value;
-            int colorKey = entry.Key;
-            if (handle.ModelGlows.TryGetValue(colorKey, out var existing) && MainPlugin.Instance.IsEspEntityAlive(existing)) continue;
+            if (desiredColors.TryGetValue(key, out int owner) && owner != slot && MainPlugin.Instance.IsEspEntityAlive(prop)) continue;
+            handle.ModelGlows.Remove(key);
+            RemoveEspProp(prop);
+        }
 
-            var glow = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic");
-            if (glow == null) continue;
-
+        foreach (var (colorKey, owner) in desiredColors)
+        {
+            if (owner == slot || handle.ModelGlows.ContainsKey(colorKey)) continue;
+            CDynamicProp? glow = null;
             try
             {
+                glow = Utilities.CreateEntityByName<CDynamicProp>("prop_dynamic");
+                if (glow == null) continue;
                 MainPlugin.Instance.TrackEspEntity(glow);
                 glow.Spawnflags = 256u;
                 glow.SetModel(playerModel);
                 glow.DispatchSpawn();
                 if (glow.Entity != null) glow.Entity.Name = $"MG_{target.Slot}_{unchecked((uint)colorKey):X8}_{Guid.NewGuid():N}";
                 glow.Render = Color.FromArgb(1, 0, 0, 0);
-                glow.Glow.GlowColorOverride = desiredColor;
+                glow.Glow.GlowColorOverride = Color.FromArgb(colorKey);
                 glow.Glow.GlowRange = Configs.Instance.GlowRange;
                 glow.Glow.GlowTeam = -1;
                 glow.Glow.GlowType = Configs.Instance.GlowType ? 2 : 3;
@@ -461,42 +464,6 @@ public class Helper
                 DebugMessage($"ESP glow setup failed: {ex.Message}", true);
             }
         }
-
-        foreach (int staleColor in handle.ModelGlows.Keys.Where(key => !desiredColors.ContainsKey(key)).ToArray())
-        {
-            if (handle.ModelGlows.Remove(staleColor, out var staleGlow)) RemoveEspProp(staleGlow);
-        }
-    }
-
-    private static Dictionary<int, Color>[] CollectViewerColors(List<CCSPlayerController>? viewers = null, int excludedSlot = -1)
-    {
-        var colors = new[] { new Dictionary<int, Color>(), new Dictionary<int, Color>() };
-        foreach (var viewer in viewers ?? GetPlayersController(false))
-        {
-            if (viewer.IsBot || viewer.IsHLTV || viewer.Slot == excludedSlot) continue;
-            for (int i = 0; i < 2; i++)
-            {
-                var color = MainPlugin.Instance.GetViewerGlowColor(viewer.Slot, (byte)(i == 0 ? 3 : 2));
-                colors[i][color.ToArgb()] = color;
-            }
-        }
-        return colors;
-    }
-
-    public static void RefreshViewerGlows(CCSPlayerController? viewer, int excludedSlot = -1)
-    {
-        var colors = CollectViewerColors(excludedSlot: excludedSlot);
-        foreach (var data in MainPlugin.Instance.g_Main.Player_Data.Values)
-        {
-            var target = data.Player?.Get_CCSPlayerController_ControlledBot();
-            if (target == null || !target.IsValid || !target.IsAlive() || !MainPlugin.Instance.IsEspEntityAlive(data.ModelRelay)) continue;
-            EnsureViewerGlows(data, target, data.Player_ModelName, colors);
-        }
-    }
-
-    public static void RemoveViewerGlows(int viewerSlot)
-    {
-        RefreshViewerGlows(null, viewerSlot);
     }
 
     public static void StartTimer()
@@ -505,20 +472,6 @@ public class Helper
         if(g_Main.Timer == null)
         {
             g_Main.Timer = MainPlugin.Instance.CreateEspTimer();
-        }
-    }
-
-    public static void ESP_Timer()
-    {
-        var controllers = GetPlayersController(true);
-        var colors = CollectViewerColors(controllers);
-        foreach(var players in controllers)
-        {
-            if(players == null || !players.IsValid) continue;
-
-            CheckPlayerInGlobals(players);
-
-            SetGlowPlayer(players, colors);
         }
     }
 
@@ -557,7 +510,7 @@ public class Helper
         MainPlugin.Instance.AddCommandListener("say", MainPlugin.Instance.OnPlayerSay, HookMode.Post);
         MainPlugin.Instance.AddCommandListener("say_team", MainPlugin.Instance.OnPlayerSay_Team, HookMode.Post);
         MainPlugin.Instance.AddCommandListener("say", MainPlugin.Instance.OnColorInput, HookMode.Pre);
-        MainPlugin.Instance.AddCommandListener("say_team", MainPlugin.Instance.OnColorInput, HookMode.Pre);
+        MainPlugin.Instance.AddCommandListener("say_team", MainPlugin.Instance.OnTeamColorInput, HookMode.Pre);
         MainPlugin.Instance.HookUserMessage(118, MainPlugin.Instance.OnUserMessage_OnSayText2, HookMode.Pre);
 
         RegisterCssCommands(Configs.Instance.Reload_Plugin.Reload_Plugin_CommandsInGame.ConvertCommands(), "Commands To Reload ESP Plugin", MainPlugin.Instance.Game_UserMessages.CommandsAction_ReloadPlugin);
@@ -586,7 +539,7 @@ public class Helper
         MainPlugin.Instance.RemoveCommandListener("say", MainPlugin.Instance.OnPlayerSay, HookMode.Post);
         MainPlugin.Instance.RemoveCommandListener("say_team", MainPlugin.Instance.OnPlayerSay_Team, HookMode.Post);
         MainPlugin.Instance.RemoveCommandListener("say", MainPlugin.Instance.OnColorInput, HookMode.Pre);
-        MainPlugin.Instance.RemoveCommandListener("say_team", MainPlugin.Instance.OnColorInput, HookMode.Pre);
+        MainPlugin.Instance.RemoveCommandListener("say_team", MainPlugin.Instance.OnTeamColorInput, HookMode.Pre);
         MainPlugin.Instance.UnhookUserMessage(118, MainPlugin.Instance.OnUserMessage_OnSayText2, HookMode.Pre);
 
         RemoveCssCommands(Configs.Instance.Reload_Plugin.Reload_Plugin_CommandsInGame.ConvertCommands(), MainPlugin.Instance.Game_UserMessages.CommandsAction_ReloadPlugin);

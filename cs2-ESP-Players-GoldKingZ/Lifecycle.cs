@@ -24,17 +24,12 @@ public partial class MainPlugin
         var player = ev.Userid;
         if (player == null || !player.IsValid) return HookResult.Continue;
         Helper.CheckPlayerInGlobals(player);
-        int slot = player.Slot;
-        var connection = g_Main.Player_Data[slot];
-        var identity = player.EntityHandle.Raw;
-        int generation = _runtimeGeneration;
-        Server.NextFrame(() =>
+        if (!_reconcilePending || _pendingSpawns != null)
         {
-            if (generation != _runtimeGeneration || !_runtimeActive || !g_EnablePlugin.Value || !player.IsValid || player.EntityHandle.Raw != identity) return;
-            if (!g_Main.Player_Data.TryGetValue(slot, out var current)
-                || !ReferenceEquals(current, connection) || current.Player.EntityHandle.Raw != identity) return;
-            Helper.SetGlowPlayer(player);
-        });
+            _pendingSpawns ??= new();
+            _pendingSpawns[player.Slot] = g_Main.Player_Data[player.Slot];
+            QueueReconcileFrame();
+        }
         return HookResult.Continue;
     }
 
@@ -59,6 +54,7 @@ public partial class MainPlugin
         _runtimeActive = false;
         _runtimeGeneration++;
         _reconcilePending = false;
+        _pendingSpawns = null;
         _pendingColorInputs.Clear();
     }
 
@@ -72,7 +68,16 @@ public partial class MainPlugin
     }
 
     private bool _reconcilePending;
-    private void ScheduleEspReconcile()
+    private Dictionary<int, Globals.PlayerDataClass>? _pendingSpawns;
+
+    internal void ScheduleEspReconcile()
+    {
+        // A change in viewers or colors affects every target and supersedes spawn-only work.
+        _pendingSpawns = null;
+        QueueReconcileFrame();
+    }
+
+    private void QueueReconcileFrame()
     {
         if (!_runtimeActive || _reconcilePending) return;
         _reconcilePending = true;
@@ -81,7 +86,23 @@ public partial class MainPlugin
         {
             if (generation != _runtimeGeneration) return;
             _reconcilePending = false;
-            if (_runtimeActive && g_EnablePlugin.Value) Helper.ESP_Timer();
+            var spawns = _pendingSpawns;
+            _pendingSpawns = null;
+            if (_runtimeActive && g_EnablePlugin.Value) Helper.ESP_Timer(spawns);
+        });
+    }
+
+    internal void ScheduleConfigReload()
+    {
+        int generation = _runtimeGeneration;
+        Server.NextFrame(() =>
+        {
+            if (generation != _runtimeGeneration || !_runtimeActive || !g_EnablePlugin.Value) return;
+            Helper.RemoveRegisterCommandsAndHooks();
+            Helper.ClearVariables();
+            Config.Configs.Load(ModuleDirectory, true);
+            Helper.RegisterCommandsAndHooks();
+            Helper.ReloadPlayersGlobals();
         });
     }
 

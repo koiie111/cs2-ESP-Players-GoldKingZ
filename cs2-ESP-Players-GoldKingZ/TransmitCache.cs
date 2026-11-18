@@ -19,6 +19,7 @@ public partial class MainPlugin
 
     private sealed class TransmitPlan
     {
+        public long Version;
         public byte Team;
         public bool Hltv;
         public int CTColor;
@@ -36,10 +37,11 @@ public partial class MainPlugin
     private readonly Dictionary<int, ViewerColors> _viewerColors = new();
     private readonly Dictionary<int, TransmitPlan> _transmitPlans = new();
     private int _runtimeGeneration;
+    private long _planVersion;
     private bool _enemyOnly;
     private bool _disableGotv;
 
-    public Color GetViewerGlowColor(int slot, byte team)
+    private ViewerColors GetViewerColors(int slot)
     {
         if (!_viewerColors.TryGetValue(slot, out var cached))
             _viewerColors[slot] = cached = new ViewerColors();
@@ -62,7 +64,13 @@ public partial class MainPlugin
             cached.DefaultT = config.Glow_Color_T;
             cached.Initialized = true;
         }
-        return team == 3 ? cached.CTColor : cached.TColor;
+        return cached;
+    }
+
+    public Color GetViewerGlowColor(int slot, byte team)
+    {
+        var colors = GetViewerColors(slot);
+        return team == 3 ? colors.CTColor : colors.TColor;
     }
 
     public void ForgetViewer(int slot)
@@ -75,6 +83,7 @@ public partial class MainPlugin
     {
         _runtimeGeneration++;
         _reconcilePending = false;
+        _pendingSpawns = null;
         _viewerColors.Clear();
         _transmitPlans.Clear();
         _targets.Clear();
@@ -86,7 +95,6 @@ public partial class MainPlugin
     {
         uint raw = entity.EntityHandle.Raw;
         if (!_trackedEntities.Remove(raw)) return;
-        _transmitPlans.Clear();
         ScheduleEspReconcile();
     }
 
@@ -100,7 +108,6 @@ public partial class MainPlugin
     public void RemoveEspEntity(CDynamicProp? prop)
     {
         if (prop == null || !_trackedEntities.Remove(prop.EntityHandle.Raw)) return;
-        _transmitPlans.Clear();
         if (prop.IsValid) prop.Remove();
     }
 
@@ -114,6 +121,7 @@ public partial class MainPlugin
         foreach (var entry in g_Main.Player_Data)
         {
             var data = entry.Value;
+            if (data.ModelRelay == null && data.ModelGlows.Count == 0) continue;
             var player = data.Player;
             bool valid = player != null && player.IsValid;
             byte team = valid ? player!.Get_CCSPlayerController_ControlledBot()?.TeamNum ?? (byte)0 : (byte)0;
@@ -134,7 +142,7 @@ public partial class MainPlugin
             _glows.AddRange(_nextGlows);
             _enemyOnly = Configs.Instance.ShowOnlyEnemyTeam;
             _disableGotv = Configs.Instance.DisableGlowOnGOTV;
-            _transmitPlans.Clear();
+            _planVersion++;
         }
     }
 
@@ -144,7 +152,7 @@ public partial class MainPlugin
 
     private void ApplyTransmitPlans(CCheckTransmitInfoList infos)
     {
-        if (g_Main.Player_Data.Count == 0) return;
+        if (_trackedEntities.Count == 0 || infos.Count == 0) return;
         // Sample native target state once per callback, including bot takeover and team changes.
         CaptureTargets();
         if (_glows.Count == 0 && !_targets.Any(t => t.Relay >= 0)) return;
@@ -156,12 +164,24 @@ public partial class MainPlugin
             int slot = viewer.Slot;
             byte team = viewer.TeamNum;
             bool hltv = viewer.IsHLTV;
-            int ct = GetViewerGlowColor(slot, 3).ToArgb();
-            int t = GetViewerGlowColor(slot, 2).ToArgb();
-            if (!_transmitPlans.TryGetValue(slot, out var plan) || plan.Team != team
-                || plan.Hltv != hltv || plan.CTColor != ct || plan.TColor != t)
+            var colors = GetViewerColors(slot);
+            int ct = colors.CTColor.ToArgb();
+            int t = colors.TColor.ToArgb();
+            if (!_transmitPlans.TryGetValue(slot, out var plan))
+                _transmitPlans[slot] = plan = new TransmitPlan { Version = -1 };
+            bool viewerChanged = plan.Team != team || plan.Hltv != hltv || plan.CTColor != ct || plan.TColor != t;
+            if (plan.Version != _planVersion || viewerChanged)
             {
-                plan = new TransmitPlan { Team = team, Hltv = hltv, CTColor = ct, TColor = t };
+                // Provider loads and unannounced viewer team changes can select a glow that
+                // was absent when the last sweep calculated demand.
+                if (plan.Version >= 0 && viewerChanged)
+                    ScheduleEspReconcile();
+                plan.Add.Clear();
+                plan.Remove.Clear();
+                plan.Team = team;
+                plan.Hltv = hltv;
+                plan.CTColor = ct;
+                plan.TColor = t;
                 foreach (var target in _targets)
                 {
                     if (target.Relay < 0) continue;
@@ -173,7 +193,7 @@ public partial class MainPlugin
                     bool hide = HideTarget(target, slot, team, hltv) || glow.Color != (target.Team == 3 ? ct : t);
                     (hide ? plan.Remove : plan.Add).Add(glow.Index);
                 }
-                _transmitPlans[slot] = plan;
+                plan.Version = _planVersion;
             }
             foreach (int index in plan.Remove) info.TransmitEntities.Remove(index);
             foreach (int index in plan.Add) info.TransmitEntities.Add(index);

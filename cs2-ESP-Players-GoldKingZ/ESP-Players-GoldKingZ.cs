@@ -41,7 +41,6 @@ public partial class MainPlugin : BasePlugin
     public override void Load(bool hotReload)
     {
         Instance = this;
-        RegisterFakeConVars(typeof(ConVar));
         Configs.Load(ModuleDirectory, hotReload);
 
         _api = new ESPPlayersApiImpl();
@@ -49,7 +48,11 @@ public partial class MainPlugin : BasePlugin
 
         Helper.RemoveRegisterCommandsAndHooks();
         Helper.ClearVariables();
-        if (g_EnablePlugin.Value) Helper.RegisterCommandsAndHooks();
+        if (g_EnablePlugin.Value)
+        {
+            Helper.RegisterCommandsAndHooks();
+            if (hotReload) Helper.ReloadPlayersGlobals();
+        }
 
         g_EnablePlugin.ValueChanged += (sender, value) =>
         {
@@ -66,17 +69,6 @@ public partial class MainPlugin : BasePlugin
                 Helper.DebugMessage($"{Con.LightRed}Plugin Has Been Disabled By ConVar [{Con.Purple}{g_EnablePlugin.Name}{Con.LightRed}] Set To {Con.Purple}{g_EnablePlugin.Value}", true);
             }
         };
-
-        if (hotReload)
-        {
-            Helper.RemoveRegisterCommandsAndHooks();
-            Helper.ClearVariables();
-            if (g_EnablePlugin.Value)
-            {
-                Helper.RegisterCommandsAndHooks();
-                Helper.ReloadPlayersGlobals();
-            }
-        }
     }
 
     public override void OnAllPluginsLoaded(bool hotReload)

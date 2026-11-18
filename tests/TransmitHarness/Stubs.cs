@@ -11,13 +11,28 @@ namespace CounterStrikeSharp.API.Core
     }
     public class CCSPlayerController : CEntityInstance
     {
-        public bool IsValid = true, IsHLTV;
+        public bool IsValid = true, IsHLTV, IsBot;
         public int Slot;
         public byte TeamNum;
         public CCSPlayerController? Controlled;
         public CCSPlayerController Get_CCSPlayerController_ControlledBot() => Controlled ?? this;
     }
-    public struct CCheckTransmitInfo { public HashSet<int> TransmitEntities; }
+    // Managed equivalent of the pinned SDK's 16384-edict CFixedBitVecBase.
+    public sealed class TransmitBits
+    {
+        private readonly uint[] _words = new uint[16384 / 32];
+        public TransmitBits(bool full = false)
+        {
+            if (full) Array.Fill(_words, uint.MaxValue);
+        }
+        public void Add(int index) => _words[index >> 5] |= 1u << (index & 31);
+        public void Remove(int index) => _words[index >> 5] &= ~(1u << (index & 31));
+        public bool Contains(int index) => (_words[index >> 5] & (1u << (index & 31))) != 0;
+        public void Clear() => Array.Clear(_words);
+        public bool IsEmpty => !_words.AsSpan().ContainsAnyExcept(0u);
+        public bool SetEquals(TransmitBits other) => _words.AsSpan().SequenceEqual(other._words);
+    }
+    public struct CCheckTransmitInfo { public TransmitBits TransmitEntities; }
     public class CCheckTransmitInfoList : List<(CCheckTransmitInfo, CCSPlayerController?)> { public CCheckTransmitInfoList() {} public CCheckTransmitInfoList(IEnumerable<(CCheckTransmitInfo, CCSPlayerController?)> items) : base(items) {} }
 }
 namespace ESP_Players_GoldKingZ.Config
@@ -25,6 +40,7 @@ namespace ESP_Players_GoldKingZ.Config
     public class Configs
     {
         public static Configs Instance = new();
+        public static void Load(string directory, bool reload) { }
         public string Glow_Color_CT = "#00BEFF", Glow_Color_T = "#F3005D";
         public bool ShowOnlyEnemyTeam, DisableGlowOnGOTV;
     }
@@ -33,17 +49,22 @@ namespace ESP_Players_GoldKingZ
 {
     using CounterStrikeSharp.API.Core;
     public class Prefs { public string Glow_Color_CT = "", Glow_Color_T = ""; }
-    public class PlayerData
+    public class Globals
     {
-        public CCSPlayerController Player = new();
-        public CDynamicProp? ModelRelay;
-        public Dictionary<int, CDynamicProp> ModelGlows = new();
+        public class PlayerDataClass
+        {
+            public CCSPlayerController Player = new();
+            public CDynamicProp? ModelRelay;
+            public Dictionary<int, CDynamicProp> ModelGlows = new();
+        }
+        public CounterStrikeSharp.API.Modules.Timers.Timer Timer = null!;
+        public Dictionary<int, PlayerDataClass> Player_Data = new();
     }
-    public class Globals { public CounterStrikeSharp.API.Modules.Timers.Timer Timer = null!; public Dictionary<int, PlayerData> Player_Data = new(); }
     public partial class MainPlugin
     {
         public static MainPlugin Instance = null!;
         private readonly Dictionary<int, int> _pendingColorInputs = new();
+        public string ModuleDirectory = "";
         public class Enabled { public bool Value = true; }
         public Enabled g_EnablePlugin = new();
         public CounterStrikeSharp.API.Modules.Timers.Timer AddTimer(float interval, Action action, CounterStrikeSharp.API.Modules.Timers.TimerFlags flags) => new(action);
@@ -70,6 +91,12 @@ namespace ESP_Players_GoldKingZ
 
 namespace CounterStrikeSharp.API
 {
+    public static class Utilities
+    {
+        public static List<Core.CCSPlayerController> Connected = new();
+        public static int Calls;
+        public static List<Core.CCSPlayerController> GetPlayers() { Calls++; return Connected; }
+    }
     public static class Server
     {
         public static readonly Queue<Action> Frames = new();
@@ -93,17 +120,21 @@ namespace CounterStrikeSharp.API.Core
 namespace ESP_Players_GoldKingZ
 {
     using CounterStrikeSharp.API.Core;
-    public static class Helper
+    public partial class Helper
     {
-        public static int Reconciles, Spawns;
+        public static int Reconciles => CounterStrikeSharp.API.Utilities.Calls;
+        public static int Spawns, Reloads;
+        public static void RemoveRegisterCommandsAndHooks() { }
+        public static void ClearVariables() { }
+        public static void RegisterCommandsAndHooks() { }
+        public static void ReloadPlayersGlobals() => Reloads++;
         public static void StartTimer() => MainPlugin.Instance.g_Main.Timer = MainPlugin.Instance.CreateEspTimer();
-        public static void ESP_Timer() => Reconciles++;
-        public static void SetGlowPlayer(CCSPlayerController player) => Spawns++;
+        private static void SetGlowPlayer(CCSPlayerController player, GlowDemand colors) => Spawns++;
         public static void CheckPlayerInGlobals(CCSPlayerController player)
         {
-            MainPlugin.Instance.g_Main.Player_Data.TryAdd(player.Slot, new PlayerData { Player = player });
+            MainPlugin.Instance.g_Main.Player_Data.TryAdd(player.Slot, new Globals.PlayerDataClass { Player = player });
         }
-        public static void RemoveGlowData(PlayerData data)
+        public static void RemoveGlowData(Globals.PlayerDataClass data)
         {
             MainPlugin.Instance.RemoveEspEntity(data.ModelRelay);
             foreach (var prop in data.ModelGlows.Values) MainPlugin.Instance.RemoveEspEntity(prop);
