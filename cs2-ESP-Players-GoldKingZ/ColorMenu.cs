@@ -161,7 +161,7 @@ public partial class MainPlugin
         return true;
     }
 
-    public Color GetViewerGlowColor(int viewerSlot, byte targetTeam)
+    private Color ParseViewerGlowColor(int viewerSlot, byte targetTeam)
     {
         string hex = GetEffectiveGlowHex(viewerSlot, targetTeam);
         return TryNormalizeHex(hex, out string normalizedHex)

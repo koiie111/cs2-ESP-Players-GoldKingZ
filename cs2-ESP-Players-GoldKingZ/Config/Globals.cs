@@ -12,6 +12,7 @@ public class Globals
         public CCSPlayerController Player { get; set; }
         public string Player_ModelName  { get; set; }
         public bool Gived_ESP  { get; set; }
+        public uint PawnHandle { get; set; }
         public CDynamicProp ModelRelay { get; set; }
         public Dictionary<int, CDynamicProp> ModelGlows { get; } = new();
         public DateTime EventPlayerChat { get; set; }

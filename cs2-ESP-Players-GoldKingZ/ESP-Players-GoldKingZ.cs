@@ -136,6 +136,48 @@ public partial class MainPlugin : BasePlugin
         if(player == null || !player.IsValid)return;
 
         Helper.CheckPlayerInGlobals(player);
+        ScheduleEspReconcile();
+    }
+
+    public HookResult OnEspSpawn(EventPlayerSpawn ev, GameEventInfo info)
+    {
+        var player = ev.Userid;
+        if (player == null || !player.IsValid) return HookResult.Continue;
+        var identity = player.EntityHandle.Raw;
+        int generation = _runtimeGeneration;
+        Server.NextFrame(() =>
+        {
+            if (generation != _runtimeGeneration || !g_EnablePlugin.Value || !player.IsValid || player.EntityHandle.Raw != identity) return;
+            Helper.CheckPlayerInGlobals(player);
+            Helper.SetGlowPlayer(player);
+        });
+        return HookResult.Continue;
+    }
+
+    public HookResult OnEspTeam(EventPlayerTeam ev, GameEventInfo info)
+    {
+        ScheduleEspReconcile();
+        return HookResult.Continue;
+    }
+
+    public HookResult OnEspBotTakeover(EventBotTakeover ev, GameEventInfo info)
+    {
+        ScheduleEspReconcile();
+        return HookResult.Continue;
+    }
+
+    private bool _reconcilePending;
+    private void ScheduleEspReconcile()
+    {
+        if (_reconcilePending) return;
+        _reconcilePending = true;
+        int generation = _runtimeGeneration;
+        Server.NextFrame(() =>
+        {
+            if (generation != _runtimeGeneration) return;
+            _reconcilePending = false;
+            if (g_EnablePlugin.Value) Helper.ESP_Timer();
+        });
     }
 
     public HookResult OnEventPlayerDeath(EventPlayerDeath @event, GameEventInfo info)
@@ -152,85 +194,7 @@ public partial class MainPlugin : BasePlugin
 
     public void OnCheckTransmit(CCheckTransmitInfoList infoList)
     {
-        foreach ((CCheckTransmitInfo info, CCSPlayerController? player) in infoList)
-        {
-            if (player == null || !player.IsValid) continue;
-
-            bool shouldRemoveGlow = false;
-
-            if (player.IsHLTV)
-            {
-                if (Configs.Instance.DisableGlowOnGOTV)
-                {
-                    shouldRemoveGlow = true;
-                }
-            }
-            int viewerSlot = player.Slot;
-
-            foreach (var kv in g_Main.Player_Data)
-            {
-                var data = kv.Value;
-                if (data == null) continue;
-
-                var ModelRelay = data.ModelRelay;
-
-                bool hasRelay = ModelRelay != null && ModelRelay.IsValid;
-                bool hasAnyGlow = data.ModelGlows.Values.Any(glow => glow != null && glow.IsValid);
-                if (!hasAnyGlow && !hasRelay) continue;
-
-                bool remove = shouldRemoveGlow;
-
-                if (!remove)
-                {
-                    if (kv.Key == viewerSlot)
-                    {
-                        remove = true;
-                    }
-                    else
-                    {
-                        var targetPlayer = data.Player;
-                        if (targetPlayer == null || !targetPlayer.IsValid)
-                        {
-                            remove = true;
-                        }
-                    }
-                }
-
-                byte targetTeam = data.Player?.Get_CCSPlayerController_ControlledBot()?.TeamNum ?? 0;
-
-                if (!remove
-                    && Configs.Instance.ShowOnlyEnemyTeam
-                    && (player.TeamNum == (byte)CsTeam.CounterTerrorist || player.TeamNum == (byte)CsTeam.Terrorist)
-                    && targetTeam == player.TeamNum)
-                {
-                    remove = true;
-                }
-
-                int desiredColorKey = GetViewerGlowColor(viewerSlot, targetTeam).ToArgb();
-                foreach (var viewerGlow in data.ModelGlows)
-                {
-                    var glow = viewerGlow.Value;
-                    if (glow != null && glow.IsValid && (remove || viewerGlow.Key != desiredColorKey))
-                    {
-                        info.TransmitEntities.Remove(glow);
-                    }
-                }
-
-                if (remove)
-                {
-                    if (hasRelay) info.TransmitEntities.Remove(ModelRelay!);
-                    continue;
-                }
-
-                if (hasRelay) info.TransmitEntities.Add(ModelRelay!);
-                if (data.ModelGlows.TryGetValue(desiredColorKey, out var personalGlow)
-                    && personalGlow != null
-                    && personalGlow.IsValid)
-                {
-                    info.TransmitEntities.Add(personalGlow);
-                }
-            }
-        }
+        ApplyTransmitPlans(infoList);
     }
     
     public HookResult OnPlayerSay(CCSPlayerController? player, CommandInfo info)
@@ -267,10 +231,10 @@ public partial class MainPlugin : BasePlugin
         if(player == null || !player.IsValid) return HookResult.Continue;
 
         Helper.RemoveGlow(player);
+        g_Main.Player_Data.Remove(player.Slot);
+        ForgetViewer(player.Slot);
         Helper.RemoveViewerGlows(player.Slot);
         _pendingColorInputs.Remove(player.SteamID);
-
-        g_Main.Player_Data.Remove(player.Slot);
 
         return HookResult.Continue;
     }

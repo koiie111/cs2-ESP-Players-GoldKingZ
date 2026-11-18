@@ -18,11 +18,20 @@ namespace ESP_Players_GoldKingZ;
 
 public class Game_UserMessages
 {
+    private string? _reloadCommandSource;
+    private string[]? _reloadChatCommands;
+
     public HookResult HookPlayerChat_UserMessages(CCSPlayerController? player, string message, UserMessage? um = null)
     {
         if(player == null || !player.IsValid) return HookResult.Continue;
 
-        if (Configs.Instance.Reload_Plugin.Reload_Plugin_CommandsInGame.ConvertCommands(true)?.Any(c => message.Equals(c.Trim(), StringComparison.OrdinalIgnoreCase)) == true)
+        string source = Configs.Instance.Reload_Plugin.Reload_Plugin_CommandsInGame;
+        if (_reloadCommandSource != source)
+        {
+            _reloadCommandSource = source;
+            _reloadChatCommands = source.ConvertCommands(true);
+        }
+        if (_reloadChatCommands?.Any(c => message.Equals(c.Trim(), StringComparison.OrdinalIgnoreCase)) == true)
         {
             Handle_ReloadPlugin(player, null!, um!);
         }
