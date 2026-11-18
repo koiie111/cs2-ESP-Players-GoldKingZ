@@ -53,4 +53,3 @@ namespace ESP_Players_GoldKingZ
         public Color BaselineColor(int slot, byte team) => ParseViewerGlowColor(slot, team);
     }
 }
-
