@@ -213,6 +213,7 @@ static class Program
     {
         System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
         CheckLifecycle();
+        HudTests.Run();
         Console.WriteLine("case,mean_us,p95_us,p99_us,bytes_per_call");
         foreach (int count in new[] { 1, 24, 64 })
         foreach (int palette in new[] { 1, 4, 64 })

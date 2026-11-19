@@ -41,7 +41,8 @@ namespace ESP_Players_GoldKingZ.Config
     {
         public static Configs Instance = new();
         public static void Load(string directory, bool reload) { }
-        public string Glow_Color_CT = "#00BEFF", Glow_Color_T = "#F3005D";
+        public string Glow_Color_CT = "0, 190, 255, 255", Glow_Color_T = "243, 0, 93, 255";
+        public bool PanoramaMenuEnabled;
         public bool ShowOnlyEnemyTeam, DisableGlowOnGOTV;
     }
 }
@@ -63,9 +64,6 @@ namespace ESP_Players_GoldKingZ
     public partial class MainPlugin
     {
         public static MainPlugin Instance = null!;
-        private readonly Dictionary<int, int> _pendingColorInputs = new();
-        private void CloseAllEspHuds() { }
-        private void ForgetEspHud(int slot) { }
         public string ModuleDirectory = "";
         public class Enabled { public bool Value = true; }
         public Enabled g_EnablePlugin = new();
@@ -73,21 +71,21 @@ namespace ESP_Players_GoldKingZ
         public void QueueReconcile() => ScheduleEspReconcile();
         public int TrackedCount => _trackedEntities.Count;
         public int PendingInputs => _pendingColorInputs.Count;
-        public void BeginInput(int slot) => _pendingColorInputs[slot] = 1;
+        public void BeginInput(int slot) => BeginHexInput(new CCSPlayerController { Slot = slot }, GlowTeamChoice.Terrorist);
         public Globals g_Main = new();
         public Dictionary<int, Prefs> _prefs = new();
-        private Color ParseViewerGlowColor(int slot, byte team)
+        public Color BaselineColor(int slot, byte team)
         {
             string hex = team == 3 ? Config.Configs.Instance.Glow_Color_CT : Config.Configs.Instance.Glow_Color_T;
             if (_prefs.TryGetValue(slot, out var prefs))
             {
                 string personal = team == 3 ? prefs.Glow_Color_CT : prefs.Glow_Color_T;
-                if (System.Text.RegularExpressions.Regex.IsMatch(personal, "^#[0-9a-fA-F]{6}$")) hex = personal;
+                if (System.Text.RegularExpressions.Regex.IsMatch(personal, "^#[0-9a-fA-F]{6}$"))
+                    return Color.FromArgb(unchecked((int)0xff000000) | Convert.ToInt32(personal[1..], 16));
             }
-            return Color.FromArgb(unchecked((int)0xff000000) | Convert.ToInt32(hex[1..], 16));
+            return Color.FromArgb(hex.ToColor().ToArgb() | unchecked((int)0xff000000));
         }
         public void Run(CCheckTransmitInfoList infos) => ApplyTransmitPlans(infos);
-        public Color BaselineColor(int slot, byte team) => ParseViewerGlowColor(slot, team);
     }
 }
 
@@ -98,6 +96,7 @@ namespace CounterStrikeSharp.API
         public static List<Core.CCSPlayerController> Connected = new();
         public static int Calls;
         public static List<Core.CCSPlayerController> GetPlayers() { Calls++; return Connected; }
+        public static Core.CCSPlayerController? GetPlayerFromSlot(int slot) => Connected.Find(p => p.Slot == slot);
     }
     public static class Server
     {
@@ -109,11 +108,23 @@ namespace CounterStrikeSharp.API
 namespace CounterStrikeSharp.API.Modules.Timers
 {
     public enum TimerFlags { REPEAT = 1, STOP_ON_MAPCHANGE = 2 }
-    public class Timer(Action action) { public void Fire() => action(); }
+    public class Timer(Action action)
+    {
+        public static readonly List<Timer> OneShots = new();
+        public readonly float Interval;
+        public Timer(float interval, Action action) : this(action)
+        {
+            Interval = interval;
+            Core.FunctionReference.Create(action);
+            OneShots.Add(this);
+        }
+        public void Fire() { OneShots.Remove(this); action(); }
+        public void Kill() { if (!OneShots.Remove(this)) throw new Exception("Killed an inactive one-shot"); }
+    }
 }
 namespace CounterStrikeSharp.API.Core
 {
-    public enum HookResult { Continue }
+    public enum HookResult { Continue, Handled }
     public class GameEventInfo { }
     public class EventPlayerSpawn { public CCSPlayerController? Userid; }
     public class EventPlayerTeam { }

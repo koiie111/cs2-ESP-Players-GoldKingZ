@@ -1,11 +1,8 @@
 using System.Drawing;
-using System.Text.RegularExpressions;
-using CounterStrikeSharp.API;
+using System.Globalization;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Utils;
-using ESP_Players_GoldKingZ.Config;
 
 namespace ESP_Players_GoldKingZ;
 
@@ -29,19 +26,15 @@ public partial class MainPlugin
         "#B347FF",
         "#FFFFFF"
     ];
-
-    private static readonly Regex HexColorPattern = new(
-        "^#(?<hex>[0-9a-fA-F]{6})$",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
-    private readonly Dictionary<int, GlowTeamChoice> _pendingColorInputs = new();
+    private static readonly string[] PresetButtons = Array.ConvertAll(PresetColors, hex => $"esp_color_{hex[1..]}");
 
     // CounterStrikeSharp keys command listeners by delegate. Each registration needs its own method.
     public HookResult OnTeamColorInput(CCSPlayerController? player, CommandInfo info) => OnColorInput(player, info);
 
     public HookResult OnColorInput(CCSPlayerController? player, CommandInfo info)
     {
-        if (player == null || !player.IsValid || !_pendingColorInputs.TryGetValue(player.Slot, out var team))
+        if (_pendingColorInputs.Count == 0 || player is not { IsValid: true }
+            || !_pendingColorInputs.TryGetValue(player.Slot, out var prompt) || prompt.Timeout == null)
         {
             return HookResult.Continue;
         }
@@ -51,9 +44,8 @@ public partial class MainPlugin
             || message.Equals("!cancel", StringComparison.OrdinalIgnoreCase)
             || message.Equals("отмена", StringComparison.OrdinalIgnoreCase))
         {
-            _pendingColorInputs.Remove(player.Slot);
             PrintColorMessage(player, "Color.Custom.Cancelled");
-            ResumeEspHudAfterHex(player);
+            ResumeEspHudAfterHex(player, prompt);
             return HookResult.Handled;
         }
 
@@ -65,15 +57,14 @@ public partial class MainPlugin
             return HookResult.Handled;
         }
 
-        if (!TryNormalizeHex(message, out string normalizedHex))
+        if (!TryReadRgb(message, out int rgb))
         {
             PrintColorMessage(player, "Color.Custom.Invalid");
             return HookResult.Handled;
         }
 
-        _pendingColorInputs.Remove(player.Slot);
-        ApplyGlowColor(player, team, normalizedHex);
-        ResumeEspHudAfterHex(player);
+        ApplyGlowColor(player, prompt.Team, $"#{rgb:X6}");
+        ResumeEspHudAfterHex(player, prompt);
         return HookResult.Handled;
     }
 
@@ -86,16 +77,15 @@ public partial class MainPlugin
             return false;
         }
 
-        if (team == GlowTeamChoice.CounterTerrorist)
+        bool ct = team == GlowTeamChoice.CounterTerrorist;
+        if ((ct ? prefs.Glow_Color_CT : prefs.Glow_Color_T) != hex)
         {
-            prefs.Glow_Color_CT = hex;
+            var colors = GetViewerColors(player.Slot);
+            bool changed = (ct ? colors.CtHex : colors.THex) != hex;
+            if (ct) prefs.Glow_Color_CT = hex;
+            else prefs.Glow_Color_T = hex;
+            if (changed) ScheduleMenuColorChange(player.Slot, ct);
         }
-        else
-        {
-            prefs.Glow_Color_T = hex;
-        }
-
-        ScheduleEspReconcile();
         if (announce)
         {
             string teamName = Localizer.ForPlayer(player, team == GlowTeamChoice.CounterTerrorist ? "Color.Hud.CT" : "Color.Hud.T");
@@ -104,43 +94,22 @@ public partial class MainPlugin
         return true;
     }
 
-    private Color ParseViewerGlowColor(int viewerSlot, byte targetTeam)
+    private static bool TryReadRgb(string? value, out int rgb)
     {
-        string hex = GetEffectiveGlowHex(viewerSlot, targetTeam);
-        return TryNormalizeHex(hex, out string normalizedHex)
-            ? Color.FromArgb(
-                255,
-                Convert.ToInt32(normalizedHex.Substring(1, 2), 16),
-                Convert.ToInt32(normalizedHex.Substring(3, 2), 16),
-                Convert.ToInt32(normalizedHex.Substring(5, 2), 16))
-            : Color.White;
+        var hex = value.AsSpan().Trim();
+        rgb = 0;
+        return hex.Length == 7 && hex[0] == '#' && hex[1..].IndexOfAnyExcept("0123456789abcdefABCDEF") < 0
+            && int.TryParse(hex[1..], NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out rgb);
     }
 
-    private string GetEffectiveGlowHex(int viewerSlot, byte targetTeam)
+    private static Color ResolveGlowColor(string? saved, string configured, out string hex)
     {
-        if (_prefs != null && _prefs.TryGetValue(viewerSlot, out var prefs))
+        if (!TryReadRgb(saved, out int rgb))
         {
-            string savedHex = targetTeam == (byte)CsTeam.CounterTerrorist
-                ? prefs.Glow_Color_CT
-                : prefs.Glow_Color_T;
-
-            if (TryNormalizeHex(savedHex, out string normalizedSavedHex))
-            {
-                return normalizedSavedHex;
-            }
+            rgb = configured.ToColor().ToArgb() & 0xFFFFFF;
         }
-
-        Color configuredColor = targetTeam == (byte)CsTeam.CounterTerrorist
-            ? Configs.Instance.Glow_Color_CT.ToColor()
-            : Configs.Instance.Glow_Color_T.ToColor();
-        return $"#{configuredColor.R:X2}{configuredColor.G:X2}{configuredColor.B:X2}";
-    }
-
-    private static bool TryNormalizeHex(string? value, out string normalizedHex)
-    {
-        Match match = HexColorPattern.Match(value?.Trim() ?? "");
-        normalizedHex = match.Success ? $"#{match.Groups["hex"].Value.ToUpperInvariant()}" : "";
-        return match.Success;
+        hex = $"#{rgb:X6}";
+        return Color.FromArgb(unchecked((int)0xFF000000) | rgb);
     }
 
     private void PrintColorMessage(CCSPlayerController player, string localizationKey)

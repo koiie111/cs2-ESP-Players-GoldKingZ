@@ -19,6 +19,10 @@
 	"PrintToConsoleToPlayer.Give.ESP.List.Enabled": "  {0} : 已启用",
 	"PrintToConsoleToPlayer.Give.ESP.List.Disabled": "  {0} : 已禁用",
 
+	"Color.PrefsUnavailable": "{green}[ESP] {darkred}你的设置尚未加载，请稍后再试。",
+	"Color.Custom.Cancelled": "{green}[ESP] {grey}已取消输入自定义颜色。",
+	"Color.Custom.Invalid": "{green}[ESP] {darkred}颜色格式无效。请输入 # 和六位十六进制数字，例如 {lime}#12A4FF{darkred}。",
+	"Color.Applied": "{green}[ESP] {grey}{0}的描边颜色已设为 {lime}{1}{grey}。",
 	"Color.Hud.Title": "玩家描边",
 	"Color.Hud.CT": "反恐精英",
 	"Color.Hud.T": "恐怖分子",

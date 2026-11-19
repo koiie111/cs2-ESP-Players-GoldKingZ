@@ -3,10 +3,9 @@ using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Commands;
-using CounterStrikeSharp.API.Modules.Timers;
-using CounterStrikeSharp.API.Modules.Utils;
 using ESP_Players_GoldKingZ.Config;
 using PanoramaManager;
+using GameTimer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 namespace ESP_Players_GoldKingZ;
 
@@ -14,18 +13,65 @@ public partial class MainPlugin
 {
     private const string EspLayout = "panorama/layout/custom_game/gkz_esp_colors.vxml_c";
     private PanelHandle? _espHud;
+    private HudTimeout? _idleHudTimer;
     private readonly Dictionary<int, EspHudView> _espHudViews = new();
+    private readonly Dictionary<int, HexPrompt> _pendingColorInputs = new();
+
+    private sealed class HexPrompt(GlowTeamChoice team)
+    {
+        public GlowTeamChoice Team { get; } = team;
+        public HudTimeout? Timeout;
+    }
+
+    // CSS 1.0.374 registers a Timer's Action as a permanent FunctionReference.
+    // Release our per-request closure both on expiry and when the player cancels.
+    private sealed class HudTimeout
+    {
+        private readonly GameTimer _timer;
+        private readonly int _reference;
+
+        public HudTimeout(float seconds, Action elapsed)
+        {
+            Action callback = () =>
+            {
+                try { elapsed(); }
+                finally { FunctionReference.Remove(_reference); }
+            };
+            _reference = FunctionReference.Create(callback).Identifier;
+            try { _timer = new GameTimer(seconds, callback); }
+            catch
+            {
+                FunctionReference.Remove(_reference);
+                throw;
+            }
+        }
+
+        public void Cancel()
+        {
+            _timer.Kill();
+            FunctionReference.Remove(_reference);
+        }
+    }
 
     private sealed class EspHudView(GlowTeamChoice team)
     {
-        public GlowTeamChoice Team { get; set; } = team;
-        public bool AwaitingHex { get; init; }
-        public string CtHex { get; set; } = "";
-        public string THex { get; set; } = "";
-        public string PreviewHex { get; set; } = "";
+        public GlowTeamChoice Team = team;
+        public GlowTeamChoice? DrawnTeam;
+        public string? Language;
+        public string? PreviewHex;
+        public int SelectedPreset = -1;
+        public readonly byte?[] Levels = new byte?[9];
+        public bool NeedsFullDraw = true;
     }
 
-    private string HudText(CCSPlayerController player, string key) => Localizer.ForPlayer(player, key);
+    private static readonly string[] ChannelPanels =
+    [
+        "esp_ct_dot_0", "esp_ct_dot_1", "esp_ct_dot_2",
+        "esp_t_dot_0", "esp_t_dot_1", "esp_t_dot_2",
+        "esp_outline_0", "esp_outline_1", "esp_outline_2"
+    ];
+    private static readonly string[] LevelClasses =
+        Enumerable.Range(0, 256).Select(level => $"esp-level-{level:X2}").ToArray();
 
     [ConsoleCommand("css_esp", "Open or close ESP color settings")]
     [ConsoleCommand("css_wh", "Open or close ESP color settings")]
@@ -35,30 +81,33 @@ public partial class MainPlugin
     {
         if (!_runtimeActive || player is not { IsValid: true, IsBot: false, IsHLTV: false }) return;
 
-        if (_espHudViews.ContainsKey(player.Slot))
-        {
+        if (_espHudViews.ContainsKey(player.Slot) || _pendingColorInputs.ContainsKey(player.Slot))
             CloseEspHud(player.Slot);
+        else
+            OpenEspHud(player, GlowTeamChoice.CounterTerrorist);
+    }
+
+    private void OpenEspHud(CCSPlayerController player, GlowTeamChoice team)
+    {
+        if (!Configs.Instance.PanoramaMenuEnabled)
+        {
+            PrintColorMessage(player, "Color.Hud.Unavailable");
             return;
         }
-
-        if (!Configs.Instance.PanoramaMenuEnabled || !Panorama.CanReceiveClicks)
+        if (_prefs == null || !_prefs.TryGetValue(player.Slot, out _))
+        {
+            PrintColorMessage(player, "Color.PrefsUnavailable");
+            return;
+        }
+        if (!Panorama.IsInitialised) Panorama.Init(this);
+        if (!Panorama.CanReceiveClicks)
         {
             PrintColorMessage(player, "Color.Hud.Unavailable");
             return;
         }
 
-        _pendingColorInputs.Remove(player.Slot);
-        OpenEspHud(player, GlowTeamChoice.CounterTerrorist);
-    }
-
-    private void OpenEspHud(CCSPlayerController player, GlowTeamChoice team)
-    {
-        if (!_runtimeActive || _prefs == null || !_prefs.TryGetValue(player.Slot, out _))
-        {
-            PrintColorMessage(player, "Color.PrefsUnavailable");
-            return;
-        }
-
+        _idleHudTimer?.Cancel();
+        _idleHudTimer = null;
         if (_espHud == null)
         {
             _espHud = Panorama.Spawn(EspLayout, new LayoutContract
@@ -79,22 +128,51 @@ public partial class MainPlugin
             return;
         }
 
-        _espHudViews.Remove(player.Slot);
+        ForgetEspHud(player.Slot);
         PrintColorMessage(player, "Color.Hud.Unavailable");
+    }
+
+    private void ReleaseIdleHud()
+    {
+        if (_espHud == null || _espHudViews.Count != 0 || _idleHudTimer != null) return;
+
+        // PanoramaManager transmits the final close and input release for one second.
+        // An explicitly owned one-shot avoids retaining every expired timer in BasePlugin.Timers.
+        _idleHudTimer = new HudTimeout(1.1f, () =>
+        {
+            _idleHudTimer = null;
+            DisposeEspHud();
+        });
+    }
+
+    private void DisposeEspHud()
+    {
+        _idleHudTimer?.Cancel();
+        _idleHudTimer = null;
+        if (_espHud == null) return;
+        _espHud.OnEvent -= OnEspHudEvent;
+        _espHud.Dispose();
+        _espHud = null;
     }
 
     private void CloseAllEspHuds()
     {
         foreach (int slot in _espHudViews.Keys.ToArray()) CloseEspHud(slot);
+        foreach (var prompt in _pendingColorInputs.Values) prompt.Timeout?.Cancel();
+        _pendingColorInputs.Clear();
     }
 
-    private void ForgetEspHud(int slot) => _espHudViews.Remove(slot);
+    private void ForgetEspHud(int slot)
+    {
+        if (_pendingColorInputs.Remove(slot, out var prompt)) prompt.Timeout?.Cancel();
+        _espHudViews.Remove(slot);
+        ReleaseIdleHud();
+    }
 
     private void CloseEspHud(int slot)
     {
-        if (!_espHudViews.Remove(slot, out var view)) return;
-        if (view.AwaitingHex) _pendingColorInputs.Remove(slot);
-        else _espHud?.Close(slot);
+        if (_espHudViews.ContainsKey(slot)) _espHud?.Close(slot);
+        ForgetEspHud(slot);
     }
 
     private void OnEspHudEvent(PanelEvent evt)
@@ -103,112 +181,150 @@ public partial class MainPlugin
         if (evt.Action == PanelAction.Close)
         {
             _espHudViews.Remove(player.Slot);
+            ReleaseIdleHud();
             return;
         }
 
-        if (!_runtimeActive || player is not { IsValid: true, IsBot: false, IsHLTV: false }
-            || !_espHudViews.TryGetValue(player.Slot, out var view) || view.AwaitingHex
-            || !evt.Menu.IsOpenFor(player) || _prefs == null || !_prefs.TryGetValue(player.Slot, out _)) return;
+        if (evt.Action is not (PanelAction.Button or PanelAction.Restored)
+            || player is not { IsValid: true, IsBot: false, IsHLTV: false }) return;
+
+        if (!_runtimeActive || !_espHudViews.TryGetValue(player.Slot, out var view))
+        {
+            // A world reset can restore a library session on the frame after our own cleanup.
+            if (evt.Action == PanelAction.Restored) evt.Menu.Close(player.Slot);
+            return;
+        }
+        if (!evt.Menu.IsOpenFor(player) || _prefs == null || !_prefs.TryGetValue(player.Slot, out _)) return;
 
         if (evt.Action == PanelAction.Restored)
         {
-            DrawEspHud(player, view);
-            return;
+            view.NeedsFullDraw = true;
         }
-
-        if (evt.Action != PanelAction.Button) return;
-        switch (evt.ElementId)
+        else
         {
-            case "esp_ct":
-                view.Team = GlowTeamChoice.CounterTerrorist;
-                break;
-            case "esp_t":
-                view.Team = GlowTeamChoice.Terrorist;
-                break;
-            case "esp_hex":
-                CloseEspHud(player.Slot);
-                var prompt = new EspHudView(view.Team) { AwaitingHex = true };
-                int slot = player.Slot;
-                _espHudViews[slot] = prompt;
-                _pendingColorInputs[slot] = view.Team;
-                PrintColorMessage(player, "Color.Hud.Prompt");
-                AddTimer(30, () =>
-                {
-                    if (_espHudViews.TryGetValue(slot, out var current) && ReferenceEquals(current, prompt))
-                        CloseEspHud(slot);
-                }, TimerFlags.STOP_ON_MAPCHANGE);
-                return;
-            default:
-                int index = Array.FindIndex(PresetColors, hex => evt.ElementId == $"esp_color_{hex[1..]}");
-                if (index < 0 || !ApplyGlowColor(player, view.Team, PresetColors[index], announce: false)) return;
-                break;
+            switch (evt.ElementId)
+            {
+                case "esp_ct":
+                    view.Team = GlowTeamChoice.CounterTerrorist;
+                    break;
+                case "esp_t":
+                    view.Team = GlowTeamChoice.Terrorist;
+                    break;
+                case "esp_hex":
+                    BeginHexInput(player, view.Team);
+                    return;
+                default:
+                    int index = Array.IndexOf(PresetButtons, evt.ElementId);
+                    if (index < 0 || !ApplyGlowColor(player, view.Team, PresetColors[index], announce: false)) return;
+                    break;
+            }
         }
-
         DrawEspHud(player, view);
     }
 
-    private void ResumeEspHudAfterHex(CCSPlayerController player)
+    private void BeginHexInput(CCSPlayerController player, GlowTeamChoice team)
     {
-        if (!_espHudViews.TryGetValue(player.Slot, out var prompt) || !prompt.AwaitingHex) return;
+        int slot = player.Slot;
+        CloseEspHud(slot);
+        var prompt = new HexPrompt(team);
+        _pendingColorInputs[slot] = prompt;
+        prompt.Timeout = new HudTimeout(30, () =>
+        {
+            if (_pendingColorInputs.TryGetValue(slot, out var current) && ReferenceEquals(current, prompt))
+                _pendingColorInputs.Remove(slot);
+        });
+        PrintColorMessage(player, "Color.Hud.Prompt");
+    }
 
-        // Wait until the chat command has finished before giving mouse input back to the HUD.
+    private void ResumeEspHudAfterHex(CCSPlayerController player, HexPrompt prompt)
+    {
+        prompt.Timeout?.Cancel();
+        prompt.Timeout = null;
+        int slot = player.Slot;
+        uint connection = player.EntityHandle.Raw;
         Server.NextFrame(() =>
         {
-            if (player is not { IsValid: true } || !_espHudViews.TryGetValue(player.Slot, out var current)
-                || !ReferenceEquals(current, prompt)) return;
-
-            _espHudViews.Remove(player.Slot);
-            if (_runtimeActive) OpenEspHud(player, prompt.Team);
+            if (!_pendingColorInputs.TryGetValue(slot, out var current) || !ReferenceEquals(current, prompt)) return;
+            _pendingColorInputs.Remove(slot);
+            if (_runtimeActive && Utilities.GetPlayerFromSlot(slot) is { IsValid: true } owner
+                && owner.EntityHandle.Raw == connection) OpenEspHud(owner, prompt.Team);
         });
     }
 
     private void DrawEspHud(CCSPlayerController player, EspHudView view)
     {
         if (_espHud is not { } menu) return;
+        var colors = GetViewerColors(player.Slot);
+        bool ct = view.Team == GlowTeamChoice.CounterTerrorist;
+        string hex = ct ? colors.CtHex : colors.THex;
+        bool full = view.NeedsFullDraw;
+        bool success = true;
+        int preset = Array.IndexOf(PresetColors, hex);
+        string language = player.GetLanguage().Name;
+        bool translate = full || view.Language != language;
+        if (translate)
+        {
+            menu.SetVariableFor(player, "esp_title", Localizer.ForPlayer(player, "Color.Hud.Title"))
+                .SetVariableFor(player, "esp_ct_label", Localizer.ForPlayer(player, "Color.Hud.CT"))
+                .SetVariableFor(player, "esp_t_label", Localizer.ForPlayer(player, "Color.Hud.T"))
+                .SetVariableFor(player, "esp_hex_button", Localizer.ForPlayer(player, "Color.Hud.Custom"));
+        }
+        if (translate || view.SelectedPreset != preset)
+        {
+            string key = preset < 0 ? "Color.Hud.CustomName" : $"Color.Hud.{hex[1..]}";
+            menu.SetVariableFor(player, "esp_color_name", Localizer.ForPlayer(player, key));
+        }
+        if (full || view.PreviewHex != hex) menu.SetVariableFor(player, "esp_hex_value", hex);
+        if (full || view.DrawnTeam != view.Team)
+        {
+            success &= menu.TrySetClassFor(player, "esp_ct", "esp-selected", ct);
+            success &= menu.TrySetClassFor(player, "esp_t", "esp-selected", !ct);
+            success &= menu.TrySetClassFor(player, "esp_preview", "esp-team-t", !ct);
+        }
+        if (full || view.SelectedPreset != preset)
+        {
+            for (int i = -1; i < PresetButtons.Length; i++)
+            {
+                if (!full && i != view.SelectedPreset && i != preset) continue;
+                string button = i < 0 ? "esp_hex" : PresetButtons[i];
+                success &= menu.TrySetClassFor(player, button, "esp-selected", i == preset);
+            }
+        }
 
-        bool ctSelected = view.Team == GlowTeamChoice.CounterTerrorist;
-        string ctHex = GetEffectiveGlowHex(player.Slot, (byte)CsTeam.CounterTerrorist);
-        string tHex = GetEffectiveGlowHex(player.Slot, (byte)CsTeam.Terrorist);
-        string previewHex = ctSelected ? ctHex : tHex;
-        bool isPreset = Array.IndexOf(PresetColors, previewHex) >= 0;
-
-        menu.SetVariableFor(player, "esp_title", HudText(player, "Color.Hud.Title"))
-            .SetVariableFor(player, "esp_ct_label", HudText(player, "Color.Hud.CT"))
-            .SetVariableFor(player, "esp_t_label", HudText(player, "Color.Hud.T"))
-            .SetVariableFor(player, "esp_hex_button", HudText(player, "Color.Hud.Custom"))
-            .SetVariableFor(player, "esp_color_name", HudText(player, isPreset ? $"Color.Hud.{previewHex[1..]}" : "Color.Hud.CustomName"))
-            .SetVariableFor(player, "esp_hex_value", previewHex)
-            .SetClassFor(player, "esp_ct", "esp-selected", ctSelected)
-            .SetClassFor(player, "esp_t", "esp-selected", !ctSelected)
-            .SetClassFor(player, "esp_preview", "esp-team-t", !ctSelected)
-            .SetClassFor(player, "esp_hex", "esp-selected", !isPreset);
-
-        foreach (string hex in PresetColors)
-            menu.SetClassFor(player, $"esp_color_{hex[1..]}", "esp-selected", hex == previewHex);
-
-        Colorize(menu, player, "esp_ct_dot", view.CtHex, ctHex);
-        Colorize(menu, player, "esp_t_dot", view.THex, tHex);
-        Colorize(menu, player, "esp_outline", view.PreviewHex, previewHex);
-        view.CtHex = ctHex;
-        view.THex = tHex;
-        view.PreviewHex = previewHex;
+        success &= Colorize(menu, player, view, 0, colors.CTColor);
+        success &= Colorize(menu, player, view, 3, colors.TColor);
+        success &= Colorize(menu, player, view, 6, ct ? colors.CTColor : colors.TColor);
+        view.DrawnTeam = view.Team;
+        view.PreviewHex = hex;
+        view.SelectedPreset = preset;
+        view.Language = language;
+        view.NeedsFullDraw = !success;
     }
 
-    // Source 2 can toggle classes. The three additive masks compose the RGB channels in the layout.
-    private static void Colorize(PanelHandle menu, CCSPlayerController player, string panel, string previous, string hex)
+    private static bool Colorize(PanelHandle menu, CCSPlayerController player, EspHudView view, int first, System.Drawing.Color color)
     {
+        bool success = true;
+        ReadOnlySpan<byte> rgb = [color.R, color.G, color.B];
         for (int channel = 0; channel < 3; channel++)
         {
-            int offset = 1 + 2 * channel;
-            string intensity = hex.Substring(offset, 2);
-            string id = $"{panel}_{channel}";
-            if (previous.Length != 0)
+            int i = first + channel;
+            byte intensity = rgb[channel];
+            byte? old = view.Levels[i];
+            bool changed = old != intensity;
+            if (!changed && !view.NeedsFullDraw) continue;
+            if (changed && old.HasValue)
             {
-                string oldIntensity = previous.Substring(offset, 2);
-                if (oldIntensity != intensity)
-                    menu.SetClassFor(player, id, $"esp-level-{oldIntensity}", false);
+                if (!menu.TrySetClassFor(player, ChannelPanels[i], LevelClasses[old.Value], false))
+                {
+                    success = false;
+                    continue;
+                }
+                view.Levels[i] = null;
             }
-            menu.SetClassFor(player, id, $"esp-level-{intensity}", true);
+            if (menu.TrySetClassFor(player, ChannelPanels[i], LevelClasses[intensity], true))
+                view.Levels[i] = intensity;
+            else success = false;
         }
+        return success;
     }
 }

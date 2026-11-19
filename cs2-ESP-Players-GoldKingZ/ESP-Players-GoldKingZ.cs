@@ -43,7 +43,6 @@ public partial class MainPlugin : BasePlugin
     {
         Instance = this;
         Configs.Load(ModuleDirectory, hotReload);
-        PanoramaManager.Panorama.Init(this);
 
         _api = new ESPPlayersApiImpl();
         Capabilities.RegisterPluginCapability(Shared.ESPPlayersApi.Capability, () => _api);
@@ -128,7 +127,6 @@ public partial class MainPlugin : BasePlugin
         if(player == null || !player.IsValid)return;
 
         ForgetEspHud(playerSlot);
-        _pendingColorInputs.Remove(playerSlot);
         Helper.CheckPlayerInGlobals(player);
         ScheduleEspReconcile();
     }
@@ -191,7 +189,8 @@ public partial class MainPlugin : BasePlugin
     public override void Unload(bool hotReload)
     {
         StopEspRuntime();
-        PanoramaManager.Panorama.Shutdown();
+        DisposeEspHud();
+        if (PanoramaManager.Panorama.IsInitialised) PanoramaManager.Panorama.Shutdown();
         try
         {
             _prefs?.Unload();
