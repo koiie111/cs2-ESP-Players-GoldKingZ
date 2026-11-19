@@ -1,0 +1,119 @@
+<root>
+    <styles>
+        <include src="s2r://panorama/styles/custom_game/gkz_esp_colors.vcss_c" />
+    </styles>
+    <Panel class="esp-screen" hittest="false">
+        <Panel id="EspMenu" class="esp-menu">
+            <Panel class="esp-header">
+                <Label class="esp-title" text="{s:esp_title}" hittest="false" />
+                <Button id="menu_close" class="esp-close">
+                    <Label text="×" hittest="false" />
+                </Button>
+            </Panel>
+            <Panel class="esp-tabs">
+                <Button id="esp_ct" class="esp-tab esp-tab-ct">
+                    <Panel class="esp-dot" hittest="false">
+                        <Panel id="esp_ct_dot_0" class="esp-channel esp-red" hittest="false" />
+                        <Panel id="esp_ct_dot_1" class="esp-channel esp-green" hittest="false" />
+                        <Panel id="esp_ct_dot_2" class="esp-channel esp-blue" hittest="false" />
+                    </Panel>
+                    <Label class="esp-tab-label" text="{s:esp_ct_label}" hittest="false" />
+                </Button>
+                <Button id="esp_t" class="esp-tab esp-tab-t">
+                    <Panel class="esp-dot" hittest="false">
+                        <Panel id="esp_t_dot_0" class="esp-channel esp-red" hittest="false" />
+                        <Panel id="esp_t_dot_1" class="esp-channel esp-green" hittest="false" />
+                        <Panel id="esp_t_dot_2" class="esp-channel esp-blue" hittest="false" />
+                    </Panel>
+                    <Label class="esp-tab-label" text="{s:esp_t_label}" hittest="false" />
+                </Button>
+            </Panel>
+            <Panel id="esp_preview" class="esp-preview" hittest="false">
+                <Panel class="esp-art" hittest="false">
+                    <Panel id="esp_outline_0" class="esp-channel esp-red" hittest="false">
+                        <Panel class="esp-agent esp-edge-left" hittest="false" />
+                        <Panel class="esp-agent esp-edge-right" hittest="false" />
+                        <Panel class="esp-agent esp-edge-top" hittest="false" />
+                        <Panel class="esp-agent esp-edge-bottom" hittest="false" />
+                    </Panel>
+                    <Panel id="esp_outline_1" class="esp-channel esp-green" hittest="false">
+                        <Panel class="esp-agent esp-edge-left" hittest="false" />
+                        <Panel class="esp-agent esp-edge-right" hittest="false" />
+                        <Panel class="esp-agent esp-edge-top" hittest="false" />
+                        <Panel class="esp-agent esp-edge-bottom" hittest="false" />
+                    </Panel>
+                    <Panel id="esp_outline_2" class="esp-channel esp-blue" hittest="false">
+                        <Panel class="esp-agent esp-edge-left" hittest="false" />
+                        <Panel class="esp-agent esp-edge-right" hittest="false" />
+                        <Panel class="esp-agent esp-edge-top" hittest="false" />
+                        <Panel class="esp-agent esp-edge-bottom" hittest="false" />
+                    </Panel>
+                    <Panel class="esp-agent" hittest="false" />
+                </Panel>
+                <Panel class="esp-color-copy" hittest="false">
+                    <Label class="esp-color-name" text="{s:esp_color_name}" hittest="false" />
+                    <Label class="esp-color-value" text="{s:esp_hex_value}" hittest="false" />
+                </Panel>
+            </Panel>
+            <Panel class="esp-palette">
+                <Button id="esp_color_00BEFF" class="esp-swatch">
+                    <Panel class="esp-chip esp-chip-00BEFF" hittest="false" />
+                    <Panel class="esp-check" hittest="false">
+                        <Panel class="esp-check-mark" hittest="false" />
+                    </Panel>
+                </Button>
+                <Button id="esp_color_00FFFF" class="esp-swatch">
+                    <Panel class="esp-chip esp-chip-00FFFF" hittest="false" />
+                    <Panel class="esp-check" hittest="false">
+                        <Panel class="esp-check-mark" hittest="false" />
+                    </Panel>
+                </Button>
+                <Button id="esp_color_00FF66" class="esp-swatch">
+                    <Panel class="esp-chip esp-chip-00FF66" hittest="false" />
+                    <Panel class="esp-check" hittest="false">
+                        <Panel class="esp-check-mark" hittest="false" />
+                    </Panel>
+                </Button>
+                <Button id="esp_color_FFFF00" class="esp-swatch">
+                    <Panel class="esp-chip esp-chip-FFFF00" hittest="false" />
+                    <Panel class="esp-check" hittest="false">
+                        <Panel class="esp-check-mark" hittest="false" />
+                    </Panel>
+                </Button>
+                <Button id="esp_color_FF8C00" class="esp-swatch">
+                    <Panel class="esp-chip esp-chip-FF8C00" hittest="false" />
+                    <Panel class="esp-check" hittest="false">
+                        <Panel class="esp-check-mark" hittest="false" />
+                    </Panel>
+                </Button>
+                <Button id="esp_color_FF3030" class="esp-swatch">
+                    <Panel class="esp-chip esp-chip-FF3030" hittest="false" />
+                    <Panel class="esp-check" hittest="false">
+                        <Panel class="esp-check-mark" hittest="false" />
+                    </Panel>
+                </Button>
+                <Button id="esp_color_F3005D" class="esp-swatch">
+                    <Panel class="esp-chip esp-chip-F3005D" hittest="false" />
+                    <Panel class="esp-check" hittest="false">
+                        <Panel class="esp-check-mark" hittest="false" />
+                    </Panel>
+                </Button>
+                <Button id="esp_color_B347FF" class="esp-swatch">
+                    <Panel class="esp-chip esp-chip-B347FF" hittest="false" />
+                    <Panel class="esp-check" hittest="false">
+                        <Panel class="esp-check-mark" hittest="false" />
+                    </Panel>
+                </Button>
+                <Button id="esp_color_FFFFFF" class="esp-swatch">
+                    <Panel class="esp-chip esp-chip-FFFFFF" hittest="false" />
+                    <Panel class="esp-check" hittest="false">
+                        <Panel class="esp-check-mark" hittest="false" />
+                    </Panel>
+                </Button>
+            </Panel>
+            <Button id="esp_hex" class="esp-custom">
+                <Label text="{s:esp_hex_button}" hittest="false" />
+            </Button>
+        </Panel>
+    </Panel>
+</root>

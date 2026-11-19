@@ -14,12 +14,14 @@ public partial class MainPlugin
         public string DefaultT = "";
         public Color CTColor;
         public Color TColor;
+        public string CtHex = "";
+        public string THex = "";
         public bool Initialized;
     }
 
     private sealed class TransmitPlan
     {
-        public long Version;
+        public long? Version;
         public byte Team;
         public bool Hltv;
         public int CTColor;
@@ -56,8 +58,8 @@ public partial class MainPlugin
         if (!cached.Initialized || cached.CT != ct || cached.T != t
             || cached.DefaultCT != config.Glow_Color_CT || cached.DefaultT != config.Glow_Color_T)
         {
-            cached.CTColor = ParseViewerGlowColor(slot, 3);
-            cached.TColor = ParseViewerGlowColor(slot, 2);
+            cached.CTColor = ResolveGlowColor(ct, config.Glow_Color_CT, out cached.CtHex);
+            cached.TColor = ResolveGlowColor(t, config.Glow_Color_T, out cached.THex);
             cached.CT = ct;
             cached.T = t;
             cached.DefaultCT = config.Glow_Color_CT;
@@ -71,6 +73,20 @@ public partial class MainPlugin
     {
         var colors = GetViewerColors(slot);
         return team == 3 ? colors.CTColor : colors.TColor;
+    }
+
+    private void ScheduleMenuColorChange(int slot, bool ct)
+    {
+        if (_transmitPlans.TryGetValue(slot, out var plan))
+        {
+            // Rebuild the transmit bits on their next use. This known change is already
+            // requesting a full sweep, even if CheckTransmit runs after that sweep.
+            var colors = GetViewerColors(slot);
+            if (ct) plan.CTColor = colors.CTColor.ToArgb();
+            else plan.TColor = colors.TColor.ToArgb();
+            plan.Version = -1;
+        }
+        ScheduleEspReconcile();
     }
 
     public void ForgetViewer(int slot)
@@ -168,13 +184,13 @@ public partial class MainPlugin
             int ct = colors.CTColor.ToArgb();
             int t = colors.TColor.ToArgb();
             if (!_transmitPlans.TryGetValue(slot, out var plan))
-                _transmitPlans[slot] = plan = new TransmitPlan { Version = -1 };
+                _transmitPlans[slot] = plan = new TransmitPlan();
             bool viewerChanged = plan.Team != team || plan.Hltv != hltv || plan.CTColor != ct || plan.TColor != t;
             if (plan.Version != _planVersion || viewerChanged)
             {
                 // Provider loads and unannounced viewer team changes can select a glow that
                 // was absent when the last sweep calculated demand.
-                if (plan.Version >= 0 && viewerChanged)
+                if (plan.Version.HasValue && viewerChanged)
                     ScheduleEspReconcile();
                 plan.Add.Clear();
                 plan.Remove.Clear();

@@ -30,7 +30,6 @@ ESP is always enabled for every connected player. Players can only customize the
 
 [![ClientPrefs-GoldKingZ](https://img.shields.io/badge/ClientPrefs--GoldKingZ-REQUIRED_TO_DOWNLOAD-red?logo=github&labelColor=FFD700)](https://github.com/oqyh/cs2-ClientPrefs-GoldKingZ/releases)
 
-[![CS2MenuManager](https://img.shields.io/badge/CS2MenuManager--1.0.43+-REQUIRED_TO_DOWNLOAD-red?logo=github&labelColor=4B0082)](https://github.com/schwarper/CS2MenuManager/releases)
 
 [![JSON](https://img.shields.io/badge/JSON-INCLUDED_IN_ZIP-brightgreen?logo=json&labelColor=000000)](https://www.newtonsoft.com/json)
 
@@ -46,14 +45,18 @@ ESP is always enabled for every connected player. Players can only customize the
 
 ### Personal glow colors
 
-Players can type `!color` to open a WASD menu and configure separate personal glow colors for Counter-Terrorists and Terrorists. Every preset is rendered in its actual color before selection. The custom option accepts exactly `#RRGGBB` in chat and applies it immediately; the chat message containing the HEX value is hidden from other players.
+Color preferences are stored by ClientPrefs-GoldKingZ.
 
-The menu always registers readable control hints (`W/S` navigate, `E` select, `Shift` back, `Tab` close) in Russian and English, even when the corresponding CS2MenuManager language section is missing from its `config.toml`.
+### Panorama color settings
 
-Color preferences are persisted by ClientPrefs-GoldKingZ. Install CS2MenuManager 1.0.43 or newer in `addons/counterstrikesharp/` before loading this plugin.
+`!wh`, `!esp`, and `!color` open the personal color settings. Use the CT / T tabs to choose which team's glow to change. Presets apply immediately. For a custom color, enter `#RRGGBB` in chat when prompted. Click × or repeat the command to close the HUD.
 
----
+1. Create a CS2 Workshop addon and copy the contents of [`workshop/`](workshop/) into its source directory. Keep the Panorama paths intact.
+2. Compile and publish with CS2 Workshop Tools. The layout and stylesheet produce `.vxml_c` and `.vcss_c` files. The portraits use stock CS2 textures from the client.
+3. Mount the addon on the server so clients download it, for example with `mm_client_extra_addons "<Workshop ID>"` in MultiAddonManager. Reconnect with a client that has received the addon before enabling the menu.
+4. Set `"PanoramaMenuEnabled": true` in the plugin config and reload the plugin. The server needs CounterStrikeSharp **1.0.374+**. Keep the packaged `PanoramaManager.dll` alongside the ESP plugin.
 
+With `PanoramaMenuEnabled` off, the commands report that the menu is unavailable. If the Workshop resources are missing on a client, repeat the command to release the cursor.
 
 ## ⚙️ Configuration
 

@@ -17,5 +17,26 @@
 	"PrintToChatToPlayer.Give.ESP.State.Disabled": "{darkred}已禁用",
 	"PrintToConsoleToPlayer.Give.ESP.List.Header": "{green}[ESP] ESP 状态（{0} 名玩家）：",
 	"PrintToConsoleToPlayer.Give.ESP.List.Enabled": "  {0} : 已启用",
-	"PrintToConsoleToPlayer.Give.ESP.List.Disabled": "  {0} : 已禁用"
+	"PrintToConsoleToPlayer.Give.ESP.List.Disabled": "  {0} : 已禁用",
+
+	"Color.PrefsUnavailable": "{green}[ESP] {darkred}你的设置尚未加载，请稍后再试。",
+	"Color.Custom.Cancelled": "{green}[ESP] {grey}已取消输入自定义颜色。",
+	"Color.Custom.Invalid": "{green}[ESP] {darkred}颜色格式无效。请输入 # 和六位十六进制数字，例如 {lime}#12A4FF{darkred}。",
+	"Color.Applied": "{green}[ESP] {grey}{0}的描边颜色已设为 {lime}{1}{grey}。",
+	"Color.Hud.Title": "玩家描边",
+	"Color.Hud.CT": "反恐精英",
+	"Color.Hud.T": "恐怖分子",
+	"Color.Hud.Custom": "自定义 HEX 颜色",
+	"Color.Hud.CustomName": "自定义颜色",
+	"Color.Hud.Prompt": "{green}[ESP] {grey}在聊天中输入 #RRGGBB 或输入 cancel 取消。",
+	"Color.Hud.Unavailable": "{green}[ESP] {grey}此服务器的描边菜单不可用。",
+	"Color.Hud.00BEFF": "天蓝色",
+	"Color.Hud.00FFFF": "青色",
+	"Color.Hud.00FF66": "绿色",
+	"Color.Hud.FFFF00": "黄色",
+	"Color.Hud.FF8C00": "橙色",
+	"Color.Hud.FF3030": "红色",
+	"Color.Hud.F3005D": "玫红色",
+	"Color.Hud.B347FF": "紫色",
+	"Color.Hud.FFFFFF": "白色"
 }

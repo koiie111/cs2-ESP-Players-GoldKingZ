@@ -55,7 +55,7 @@ public partial class MainPlugin
         _runtimeGeneration++;
         _reconcilePending = false;
         _pendingSpawns = null;
-        _pendingColorInputs.Clear();
+        CloseAllEspHuds();
     }
 
     public CounterStrikeSharp.API.Modules.Timers.Timer CreateEspTimer()
@@ -110,7 +110,7 @@ public partial class MainPlugin
     {
         if (g_Main.Player_Data.Remove(slot, out var data)) Helper.RemoveGlowData(data);
         ForgetViewer(slot);
-        _pendingColorInputs.Remove(slot);
+        ForgetEspHud(slot);
         // The native controller may already be invalid. Reconcile surviving viewers next frame.
         ScheduleEspReconcile();
     }

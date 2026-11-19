@@ -8,6 +8,8 @@ $env:DOTNET_TieredCompilation = '0'
 dotnet run --project tests/TransmitHarness -c Release
 ```
 
+The harness also runs the production color menu against a recording Panorama handle. It checks that a repeated selection produces zero HUD writes and zero reconciliation frames, a one-channel preset change produces eight writes, and a restore replays all 28. It covers per-viewer isolation, explicit defaults, failed class writes, private chat routing, recycled slots and timer cleanup. These counts measure calls to the renderer. Native frame times and persistence through the external ClientPrefs provider require an in-game run.
+
 ## CheckTransmit
 
 Each time below is in microseconds per complete list of recipients. Each scenario has equally sized teams where possible, one target per viewer, alternating team and palette assignment, enemy-only visibility, and 200 warm-up plus 1,000 measured callbacks. The baseline models the decisions at `72d92fb` with a simplified personal color parser. The middle column runs the incoming PR implementation at `ccf97ba` with the same packed bitset substitute as the final harness. Previous PR measurements using HashSet bit writes have different costs.

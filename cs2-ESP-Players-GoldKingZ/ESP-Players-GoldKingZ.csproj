@@ -26,8 +26,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="CounterStrikeSharp.API" Version="1.0.373" />
-        <PackageReference Include="CS2MenuManager" Version="1.0.43" />
+        <PackageReference Include="CounterStrikeSharp.API" Version="1.0.374" />
+        <PackageReference Include="PanoramaManager" Version="0.4.4" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     </ItemGroup>
 
@@ -36,6 +36,7 @@
         <ItemGroup>
             <PluginFiles Include="$(ProjectDir)bin\Release\ESP-Players-GoldKingZ.dll" />
             <PluginFiles Include="$(ProjectDir)bin\Release\Newtonsoft.Json.dll" />
+            <PluginFiles Include="$(ProjectDir)bin\Release\PanoramaManager.dll" />
             <PluginFiles Include="$(ProjectDir)bin\Release\ESP-Players-GoldKingZ.deps.json" />
         </ItemGroup>
         
