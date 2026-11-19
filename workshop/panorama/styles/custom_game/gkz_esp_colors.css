@@ -1,0 +1,499 @@
+.esp-screen {
+    width: 100%;
+    height: 100%;
+    z-index: 99999;
+}
+
+.esp-menu {
+    visibility: collapse;
+    vertical-align: center;
+    margin-left: 48px;
+    margin-top: 52px;
+    width: 586px;
+    padding: 20px;
+    flow-children: down;
+    background-color: #17181bf7;
+    border: 1px solid #64666c;
+    border-radius: 8px;
+    box-shadow: #00000070 0px 10px 32px 0px;
+    color: #f7f8fa;
+    font-size: 22px;
+}
+
+.esp-menu.esp-open {
+    visibility: visible;
+}
+
+.esp-header {
+    width: 100%;
+    height: 48px;
+    margin-bottom: 16px;
+}
+
+.esp-title {
+    vertical-align: center;
+    max-width: 494px;
+    font-size: 34px;
+    font-weight: bold;
+    text-overflow: shrink;
+}
+
+.esp-close {
+    width: 44px;
+    height: 44px;
+    horizontal-align: right;
+    vertical-align: center;
+    border-radius: 5px;
+}
+
+.esp-close Label {
+    align: center center;
+    font-size: 34px;
+    line-height: 39px;
+}
+
+.esp-tabs, .esp-palette {
+    width: 100%;
+    flow-children: right;
+}
+
+.esp-tab, .esp-custom {
+    background-color: #ffffff04;
+    border: 1px solid #515258;
+    border-radius: 5px;
+}
+
+.esp-tab {
+    width: fill-parent-flow(1);
+    height: 48px;
+    flow-children: right;
+    padding-left: 17px;
+}
+
+.esp-tab-ct {
+    margin-right: 8px;
+}
+
+.esp-tab-ct.esp-selected {
+    background-color: #243842;
+    border-color: #51798d;
+}
+
+.esp-tab-t.esp-selected {
+    background-color: #3a2630;
+    border-color: #91536a;
+}
+
+.esp-tab-label {
+    vertical-align: center;
+    text-overflow: shrink;
+}
+
+.esp-dot {
+    width: 16px;
+    height: 16px;
+    vertical-align: center;
+    margin-right: 10px;
+    background-color: #000000;
+    border: 1px solid #ffffff55;
+    border-radius: 50%;
+}
+
+.esp-dot .esp-channel {
+    border-radius: 50%;
+}
+
+.esp-preview {
+    width: 100%;
+    height: 232px;
+    margin-top: 16px;
+    margin-bottom: 18px;
+    background-color: gradient(linear, 0% 0%, 100% 100%, from(#303339), to(#1d1f23));
+    border: 1px solid #42454a;
+    border-radius: 5px;
+}
+
+.esp-art {
+    width: 302px;
+    height: 232px;
+    vertical-align: bottom;
+}
+
+.esp-channel, .esp-portrait {
+    width: 100%;
+    height: 100%;
+}
+
+.esp-channel {
+    opacity: 0;
+    -s2-mix-blend-mode: additive;
+}
+
+.esp-red { background-color: #ff0000; }
+.esp-green { background-color: #00ff00; }
+.esp-blue { background-color: #0000ff; }
+
+.esp-art .esp-channel, .esp-portrait {
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+.esp-art .esp-channel {
+    background-color: #00000000;
+    background-image: url("file://{images}/custom_game/gkz_esp_ct_mask.png");
+}
+
+.esp-art .esp-red { wash-color: #ff0000; }
+.esp-art .esp-green { wash-color: #00ff00; }
+.esp-art .esp-blue { wash-color: #0000ff; }
+
+.esp-portrait {
+    background-image: url("file://{images}/custom_game/gkz_esp_ct.png");
+}
+
+.esp-team-t .esp-art .esp-channel {
+    background-image: url("file://{images}/custom_game/gkz_esp_t_mask.png");
+}
+
+.esp-team-t .esp-portrait {
+    background-image: url("file://{images}/custom_game/gkz_esp_t.png");
+}
+
+.esp-color-copy {
+    x: 302px;
+    width: 220px;
+    vertical-align: center;
+    flow-children: down;
+}
+
+.esp-color-name {
+    width: 100%;
+    font-weight: bold;
+    font-size: 30px;
+    text-overflow: shrink;
+}
+
+.esp-color-value {
+    margin-top: 4px;
+    color: #bfc5cf;
+    font-size: 23px;
+}
+
+.esp-swatch {
+    width: fill-parent-flow(1);
+    height: 54px;
+    margin-right: 5px;
+    border: 2px solid #ffffff00;
+    border-radius: 7px;
+    padding: 2px;
+}
+
+.esp-swatch:last-child { margin-right: 0px; }
+
+.esp-chip {
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+}
+
+.esp-check {
+    visibility: collapse;
+    align: center center;
+    font-size: 22px;
+    font-weight: bold;
+    color: #111217;
+    background-color: #ffffffed;
+    width: 26px;
+    height: 26px;
+    text-align: center;
+    border-radius: 50%;
+}
+
+.esp-swatch.esp-selected { border-color: #ffffff; }
+.esp-swatch.esp-selected .esp-check { visibility: visible; }
+.esp-swatch:hover { border-color: #9da3b0; }
+.esp-swatch.esp-selected:hover { border-color: #ffffff; }
+
+.esp-custom {
+    width: 100%;
+    height: 47px;
+    margin-top: 16px;
+}
+
+.esp-custom Label {
+    align: center center;
+    text-overflow: shrink;
+}
+
+.esp-custom.esp-selected { border-color: #d2d6df; }
+
+.esp-tab:hover, .esp-custom:hover, .esp-close:hover { background-color: #ffffff18; }
+.esp-tab:active, .esp-custom:active, .esp-close:active { background-color: #ffffff28; }
+
+.esp-chip-00BEFF { background-color: #00BEFF; }
+.esp-chip-00FFFF { background-color: #00FFFF; }
+.esp-chip-00FF66 { background-color: #00FF66; }
+.esp-chip-FFFF00 { background-color: #FFFF00; }
+.esp-chip-FF8C00 { background-color: #FF8C00; }
+.esp-chip-FF3030 { background-color: #FF3030; }
+.esp-chip-F3005D { background-color: #F3005D; }
+.esp-chip-B347FF { background-color: #B347FF; }
+.esp-chip-FFFFFF { background-color: #FFFFFF; }
+
+/* One opacity level per RGB byte, shared by all three channel layers. */
+.esp-level-00 { opacity: 0.000000; }
+.esp-level-01 { opacity: 0.003922; }
+.esp-level-02 { opacity: 0.007843; }
+.esp-level-03 { opacity: 0.011765; }
+.esp-level-04 { opacity: 0.015686; }
+.esp-level-05 { opacity: 0.019608; }
+.esp-level-06 { opacity: 0.023529; }
+.esp-level-07 { opacity: 0.027451; }
+.esp-level-08 { opacity: 0.031373; }
+.esp-level-09 { opacity: 0.035294; }
+.esp-level-0A { opacity: 0.039216; }
+.esp-level-0B { opacity: 0.043137; }
+.esp-level-0C { opacity: 0.047059; }
+.esp-level-0D { opacity: 0.050980; }
+.esp-level-0E { opacity: 0.054902; }
+.esp-level-0F { opacity: 0.058824; }
+.esp-level-10 { opacity: 0.062745; }
+.esp-level-11 { opacity: 0.066667; }
+.esp-level-12 { opacity: 0.070588; }
+.esp-level-13 { opacity: 0.074510; }
+.esp-level-14 { opacity: 0.078431; }
+.esp-level-15 { opacity: 0.082353; }
+.esp-level-16 { opacity: 0.086275; }
+.esp-level-17 { opacity: 0.090196; }
+.esp-level-18 { opacity: 0.094118; }
+.esp-level-19 { opacity: 0.098039; }
+.esp-level-1A { opacity: 0.101961; }
+.esp-level-1B { opacity: 0.105882; }
+.esp-level-1C { opacity: 0.109804; }
+.esp-level-1D { opacity: 0.113725; }
+.esp-level-1E { opacity: 0.117647; }
+.esp-level-1F { opacity: 0.121569; }
+.esp-level-20 { opacity: 0.125490; }
+.esp-level-21 { opacity: 0.129412; }
+.esp-level-22 { opacity: 0.133333; }
+.esp-level-23 { opacity: 0.137255; }
+.esp-level-24 { opacity: 0.141176; }
+.esp-level-25 { opacity: 0.145098; }
+.esp-level-26 { opacity: 0.149020; }
+.esp-level-27 { opacity: 0.152941; }
+.esp-level-28 { opacity: 0.156863; }
+.esp-level-29 { opacity: 0.160784; }
+.esp-level-2A { opacity: 0.164706; }
+.esp-level-2B { opacity: 0.168627; }
+.esp-level-2C { opacity: 0.172549; }
+.esp-level-2D { opacity: 0.176471; }
+.esp-level-2E { opacity: 0.180392; }
+.esp-level-2F { opacity: 0.184314; }
+.esp-level-30 { opacity: 0.188235; }
+.esp-level-31 { opacity: 0.192157; }
+.esp-level-32 { opacity: 0.196078; }
+.esp-level-33 { opacity: 0.200000; }
+.esp-level-34 { opacity: 0.203922; }
+.esp-level-35 { opacity: 0.207843; }
+.esp-level-36 { opacity: 0.211765; }
+.esp-level-37 { opacity: 0.215686; }
+.esp-level-38 { opacity: 0.219608; }
+.esp-level-39 { opacity: 0.223529; }
+.esp-level-3A { opacity: 0.227451; }
+.esp-level-3B { opacity: 0.231373; }
+.esp-level-3C { opacity: 0.235294; }
+.esp-level-3D { opacity: 0.239216; }
+.esp-level-3E { opacity: 0.243137; }
+.esp-level-3F { opacity: 0.247059; }
+.esp-level-40 { opacity: 0.250980; }
+.esp-level-41 { opacity: 0.254902; }
+.esp-level-42 { opacity: 0.258824; }
+.esp-level-43 { opacity: 0.262745; }
+.esp-level-44 { opacity: 0.266667; }
+.esp-level-45 { opacity: 0.270588; }
+.esp-level-46 { opacity: 0.274510; }
+.esp-level-47 { opacity: 0.278431; }
+.esp-level-48 { opacity: 0.282353; }
+.esp-level-49 { opacity: 0.286275; }
+.esp-level-4A { opacity: 0.290196; }
+.esp-level-4B { opacity: 0.294118; }
+.esp-level-4C { opacity: 0.298039; }
+.esp-level-4D { opacity: 0.301961; }
+.esp-level-4E { opacity: 0.305882; }
+.esp-level-4F { opacity: 0.309804; }
+.esp-level-50 { opacity: 0.313725; }
+.esp-level-51 { opacity: 0.317647; }
+.esp-level-52 { opacity: 0.321569; }
+.esp-level-53 { opacity: 0.325490; }
+.esp-level-54 { opacity: 0.329412; }
+.esp-level-55 { opacity: 0.333333; }
+.esp-level-56 { opacity: 0.337255; }
+.esp-level-57 { opacity: 0.341176; }
+.esp-level-58 { opacity: 0.345098; }
+.esp-level-59 { opacity: 0.349020; }
+.esp-level-5A { opacity: 0.352941; }
+.esp-level-5B { opacity: 0.356863; }
+.esp-level-5C { opacity: 0.360784; }
+.esp-level-5D { opacity: 0.364706; }
+.esp-level-5E { opacity: 0.368627; }
+.esp-level-5F { opacity: 0.372549; }
+.esp-level-60 { opacity: 0.376471; }
+.esp-level-61 { opacity: 0.380392; }
+.esp-level-62 { opacity: 0.384314; }
+.esp-level-63 { opacity: 0.388235; }
+.esp-level-64 { opacity: 0.392157; }
+.esp-level-65 { opacity: 0.396078; }
+.esp-level-66 { opacity: 0.400000; }
+.esp-level-67 { opacity: 0.403922; }
+.esp-level-68 { opacity: 0.407843; }
+.esp-level-69 { opacity: 0.411765; }
+.esp-level-6A { opacity: 0.415686; }
+.esp-level-6B { opacity: 0.419608; }
+.esp-level-6C { opacity: 0.423529; }
+.esp-level-6D { opacity: 0.427451; }
+.esp-level-6E { opacity: 0.431373; }
+.esp-level-6F { opacity: 0.435294; }
+.esp-level-70 { opacity: 0.439216; }
+.esp-level-71 { opacity: 0.443137; }
+.esp-level-72 { opacity: 0.447059; }
+.esp-level-73 { opacity: 0.450980; }
+.esp-level-74 { opacity: 0.454902; }
+.esp-level-75 { opacity: 0.458824; }
+.esp-level-76 { opacity: 0.462745; }
+.esp-level-77 { opacity: 0.466667; }
+.esp-level-78 { opacity: 0.470588; }
+.esp-level-79 { opacity: 0.474510; }
+.esp-level-7A { opacity: 0.478431; }
+.esp-level-7B { opacity: 0.482353; }
+.esp-level-7C { opacity: 0.486275; }
+.esp-level-7D { opacity: 0.490196; }
+.esp-level-7E { opacity: 0.494118; }
+.esp-level-7F { opacity: 0.498039; }
+.esp-level-80 { opacity: 0.501961; }
+.esp-level-81 { opacity: 0.505882; }
+.esp-level-82 { opacity: 0.509804; }
+.esp-level-83 { opacity: 0.513725; }
+.esp-level-84 { opacity: 0.517647; }
+.esp-level-85 { opacity: 0.521569; }
+.esp-level-86 { opacity: 0.525490; }
+.esp-level-87 { opacity: 0.529412; }
+.esp-level-88 { opacity: 0.533333; }
+.esp-level-89 { opacity: 0.537255; }
+.esp-level-8A { opacity: 0.541176; }
+.esp-level-8B { opacity: 0.545098; }
+.esp-level-8C { opacity: 0.549020; }
+.esp-level-8D { opacity: 0.552941; }
+.esp-level-8E { opacity: 0.556863; }
+.esp-level-8F { opacity: 0.560784; }
+.esp-level-90 { opacity: 0.564706; }
+.esp-level-91 { opacity: 0.568627; }
+.esp-level-92 { opacity: 0.572549; }
+.esp-level-93 { opacity: 0.576471; }
+.esp-level-94 { opacity: 0.580392; }
+.esp-level-95 { opacity: 0.584314; }
+.esp-level-96 { opacity: 0.588235; }
+.esp-level-97 { opacity: 0.592157; }
+.esp-level-98 { opacity: 0.596078; }
+.esp-level-99 { opacity: 0.600000; }
+.esp-level-9A { opacity: 0.603922; }
+.esp-level-9B { opacity: 0.607843; }
+.esp-level-9C { opacity: 0.611765; }
+.esp-level-9D { opacity: 0.615686; }
+.esp-level-9E { opacity: 0.619608; }
+.esp-level-9F { opacity: 0.623529; }
+.esp-level-A0 { opacity: 0.627451; }
+.esp-level-A1 { opacity: 0.631373; }
+.esp-level-A2 { opacity: 0.635294; }
+.esp-level-A3 { opacity: 0.639216; }
+.esp-level-A4 { opacity: 0.643137; }
+.esp-level-A5 { opacity: 0.647059; }
+.esp-level-A6 { opacity: 0.650980; }
+.esp-level-A7 { opacity: 0.654902; }
+.esp-level-A8 { opacity: 0.658824; }
+.esp-level-A9 { opacity: 0.662745; }
+.esp-level-AA { opacity: 0.666667; }
+.esp-level-AB { opacity: 0.670588; }
+.esp-level-AC { opacity: 0.674510; }
+.esp-level-AD { opacity: 0.678431; }
+.esp-level-AE { opacity: 0.682353; }
+.esp-level-AF { opacity: 0.686275; }
+.esp-level-B0 { opacity: 0.690196; }
+.esp-level-B1 { opacity: 0.694118; }
+.esp-level-B2 { opacity: 0.698039; }
+.esp-level-B3 { opacity: 0.701961; }
+.esp-level-B4 { opacity: 0.705882; }
+.esp-level-B5 { opacity: 0.709804; }
+.esp-level-B6 { opacity: 0.713725; }
+.esp-level-B7 { opacity: 0.717647; }
+.esp-level-B8 { opacity: 0.721569; }
+.esp-level-B9 { opacity: 0.725490; }
+.esp-level-BA { opacity: 0.729412; }
+.esp-level-BB { opacity: 0.733333; }
+.esp-level-BC { opacity: 0.737255; }
+.esp-level-BD { opacity: 0.741176; }
+.esp-level-BE { opacity: 0.745098; }
+.esp-level-BF { opacity: 0.749020; }
+.esp-level-C0 { opacity: 0.752941; }
+.esp-level-C1 { opacity: 0.756863; }
+.esp-level-C2 { opacity: 0.760784; }
+.esp-level-C3 { opacity: 0.764706; }
+.esp-level-C4 { opacity: 0.768627; }
+.esp-level-C5 { opacity: 0.772549; }
+.esp-level-C6 { opacity: 0.776471; }
+.esp-level-C7 { opacity: 0.780392; }
+.esp-level-C8 { opacity: 0.784314; }
+.esp-level-C9 { opacity: 0.788235; }
+.esp-level-CA { opacity: 0.792157; }
+.esp-level-CB { opacity: 0.796078; }
+.esp-level-CC { opacity: 0.800000; }
+.esp-level-CD { opacity: 0.803922; }
+.esp-level-CE { opacity: 0.807843; }
+.esp-level-CF { opacity: 0.811765; }
+.esp-level-D0 { opacity: 0.815686; }
+.esp-level-D1 { opacity: 0.819608; }
+.esp-level-D2 { opacity: 0.823529; }
+.esp-level-D3 { opacity: 0.827451; }
+.esp-level-D4 { opacity: 0.831373; }
+.esp-level-D5 { opacity: 0.835294; }
+.esp-level-D6 { opacity: 0.839216; }
+.esp-level-D7 { opacity: 0.843137; }
+.esp-level-D8 { opacity: 0.847059; }
+.esp-level-D9 { opacity: 0.850980; }
+.esp-level-DA { opacity: 0.854902; }
+.esp-level-DB { opacity: 0.858824; }
+.esp-level-DC { opacity: 0.862745; }
+.esp-level-DD { opacity: 0.866667; }
+.esp-level-DE { opacity: 0.870588; }
+.esp-level-DF { opacity: 0.874510; }
+.esp-level-E0 { opacity: 0.878431; }
+.esp-level-E1 { opacity: 0.882353; }
+.esp-level-E2 { opacity: 0.886275; }
+.esp-level-E3 { opacity: 0.890196; }
+.esp-level-E4 { opacity: 0.894118; }
+.esp-level-E5 { opacity: 0.898039; }
+.esp-level-E6 { opacity: 0.901961; }
+.esp-level-E7 { opacity: 0.905882; }
+.esp-level-E8 { opacity: 0.909804; }
+.esp-level-E9 { opacity: 0.913725; }
+.esp-level-EA { opacity: 0.917647; }
+.esp-level-EB { opacity: 0.921569; }
+.esp-level-EC { opacity: 0.925490; }
+.esp-level-ED { opacity: 0.929412; }
+.esp-level-EE { opacity: 0.933333; }
+.esp-level-EF { opacity: 0.937255; }
+.esp-level-F0 { opacity: 0.941176; }
+.esp-level-F1 { opacity: 0.945098; }
+.esp-level-F2 { opacity: 0.949020; }
+.esp-level-F3 { opacity: 0.952941; }
+.esp-level-F4 { opacity: 0.956863; }
+.esp-level-F5 { opacity: 0.960784; }
+.esp-level-F6 { opacity: 0.964706; }
+.esp-level-F7 { opacity: 0.968627; }
+.esp-level-F8 { opacity: 0.972549; }
+.esp-level-F9 { opacity: 0.976471; }
+.esp-level-FA { opacity: 0.980392; }
+.esp-level-FB { opacity: 0.984314; }
+.esp-level-FC { opacity: 0.988235; }
+.esp-level-FD { opacity: 0.992157; }
+.esp-level-FE { opacity: 0.996078; }
+.esp-level-FF { opacity: 1.000000; }

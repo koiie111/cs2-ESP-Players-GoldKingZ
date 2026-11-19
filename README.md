@@ -55,6 +55,17 @@ Color preferences are persisted by ClientPrefs-GoldKingZ. Install CS2MenuManager
 ---
 
 
+### Panorama color settings
+
+`!wh` and `!esp` open the personal color settings. Use the CT / T tabs to choose which team's glow to change. Presets apply immediately. For a custom color, enter `#RRGGBB` in chat when prompted. Click × or repeat the command to close the HUD. `!color` opens the keyboard menu.
+
+1. Create a CS2 Workshop addon and copy the contents of [`workshop/`](workshop/) into its source directory. Keep the Panorama paths intact.
+2. Compile and publish with CS2 Workshop Tools. The layout and stylesheet produce `.vxml_c` and `.vcss_c` files. Compiling the stylesheet also builds the four referenced PNGs as Panorama textures.
+3. Mount the addon on the server so clients download it, for example with `mm_extra_addons <Workshop ID>` in MultiAddonManager. Reconnect with a client that has received the addon before enabling the menu.
+4. Set `"PanoramaMenuEnabled": true` in the plugin config and reload the plugin. The server needs CounterStrikeSharp **1.0.374+**. Keep the packaged `PanoramaManager.dll` alongside the ESP plugin.
+
+With `PanoramaMenuEnabled` off, `!wh` and `!esp` open the keyboard menu. If the Workshop resources are missing on a particular client, repeat the command to release the cursor and use `!color`.
+
 ## ⚙️ Configuration
 
 > [!IMPORTANT]

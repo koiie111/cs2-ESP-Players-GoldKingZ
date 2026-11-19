@@ -29,5 +29,20 @@
 	"Color.Custom.Picker": "{green}[ESP] {grey}Выбрать цвет можно здесь: {lime}https://htmlcolorcodes.com/color-picker/",
 	"Color.Custom.Cancelled": "{green}[ESP] {grey}Ввод своего цвета отменён.",
 	"Color.Custom.Invalid": "{green}[ESP] {darkred}Неверный цвет. Введите ровно 6 HEX-символов, например {lime}#12A4FF{darkred}.",
-	"Color.Applied": "{green}[ESP] {grey}Цвет подсветки команды «{0}» изменён на {lime}{1}{grey}."
+	"Color.Applied": "{green}[ESP] {grey}Цвет подсветки команды «{0}» изменён на {lime}{1}{grey}.",
+
+	"Color.Hud.Title": "Подсветка игроков",
+	"Color.Hud.Custom": "Свой HEX-цвет",
+	"Color.Hud.CustomName": "Свой цвет",
+	"Color.Hud.Prompt": "{green}[ESP] {grey}Введите в чат #RRGGBB или напишите «отмена».",
+	"Color.Hud.Fallback": "{green}[ESP] {grey}Panorama недоступна. Открываю меню с управлением клавиатурой.",
+	"Color.Hud.00BEFF": "Голубой",
+	"Color.Hud.00FFFF": "Бирюзовый",
+	"Color.Hud.00FF66": "Зелёный",
+	"Color.Hud.FFFF00": "Жёлтый",
+	"Color.Hud.FF8C00": "Оранжевый",
+	"Color.Hud.FF3030": "Красный",
+	"Color.Hud.F3005D": "Малиновый",
+	"Color.Hud.B347FF": "Фиолетовый",
+	"Color.Hud.FFFFFF": "Белый"
 }

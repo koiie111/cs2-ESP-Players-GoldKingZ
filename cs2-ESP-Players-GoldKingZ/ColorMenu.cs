@@ -45,6 +45,7 @@ public partial class MainPlugin
     {
         if (!_runtimeActive || player == null || !player.IsValid) return;
 
+        CloseEspHud(player.Slot);
         EnsureMenuControlTranslations();
 
         if (_prefs == null || !_prefs.TryGetValue(player.Slot, out _))
@@ -128,7 +129,18 @@ public partial class MainPlugin
         {
             _pendingColorInputs.Remove(player.Slot);
             PrintColorMessage(player, "Color.Custom.Cancelled");
+            ResumeEspHudAfterHex(player);
             return HookResult.Handled;
+        }
+
+        if (_espHudViews.TryGetValue(player.Slot, out var view) && view.AwaitingHex
+            && (message.Equals("!esp", StringComparison.OrdinalIgnoreCase)
+                || message.Equals("!wh", StringComparison.OrdinalIgnoreCase)
+                || message.Equals("!color", StringComparison.OrdinalIgnoreCase)))
+        {
+            bool openFallback = message.Equals("!color", StringComparison.OrdinalIgnoreCase);
+            CloseEspHud(player.Slot);
+            return openFallback ? HookResult.Continue : HookResult.Handled;
         }
 
         if (!TryNormalizeHex(message, out string normalizedHex))
@@ -139,10 +151,11 @@ public partial class MainPlugin
 
         _pendingColorInputs.Remove(player.Slot);
         ApplyGlowColor(player, team, normalizedHex);
+        ResumeEspHudAfterHex(player);
         return HookResult.Handled;
     }
 
-    private bool ApplyGlowColor(CCSPlayerController player, GlowTeamChoice team, string hex)
+    private bool ApplyGlowColor(CCSPlayerController player, GlowTeamChoice team, string hex, bool announce = true)
     {
         if (!_runtimeActive) return false;
         if (_prefs == null || !_prefs.TryGetValue(player.Slot, out var prefs))
@@ -161,8 +174,11 @@ public partial class MainPlugin
         }
 
         ScheduleEspReconcile();
-        string teamName = Localizer.ForPlayer(player, team == GlowTeamChoice.CounterTerrorist ? "Color.Menu.CT" : "Color.Menu.T");
-        Helper.AdvancedPlayerPrintToChat(player, null!, Localizer.ForPlayer(player, "Color.Applied"), teamName, hex);
+        if (announce)
+        {
+            string teamName = Localizer.ForPlayer(player, team == GlowTeamChoice.CounterTerrorist ? "Color.Menu.CT" : "Color.Menu.T");
+            Helper.AdvancedPlayerPrintToChat(player, null!, Localizer.ForPlayer(player, "Color.Applied"), teamName, hex);
+        }
         return true;
     }
 

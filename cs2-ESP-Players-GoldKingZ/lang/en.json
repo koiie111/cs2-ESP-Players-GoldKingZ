@@ -29,5 +29,20 @@
 	"Color.Custom.Picker": "{green}[ESP] {grey}Color picker: {lime}https://htmlcolorcodes.com/color-picker/",
 	"Color.Custom.Cancelled": "{green}[ESP] {grey}Custom color input cancelled.",
 	"Color.Custom.Invalid": "{green}[ESP] {darkred}Invalid color. Use exactly 6 hexadecimal digits, for example {lime}#12A4FF{darkred}.",
-	"Color.Applied": "{green}[ESP] {grey}{0} glow color changed to {lime}{1}{grey}."
+	"Color.Applied": "{green}[ESP] {grey}{0} glow color changed to {lime}{1}{grey}.",
+
+	"Color.Hud.Title": "Player glow",
+	"Color.Hud.Custom": "Custom HEX color",
+	"Color.Hud.CustomName": "Custom color",
+	"Color.Hud.Prompt": "{green}[ESP] {grey}Enter #RRGGBB in chat, or type cancel.",
+	"Color.Hud.Fallback": "{green}[ESP] {grey}Panorama unavailable. Opening the keyboard menu.",
+	"Color.Hud.00BEFF": "Sky blue",
+	"Color.Hud.00FFFF": "Cyan",
+	"Color.Hud.00FF66": "Green",
+	"Color.Hud.FFFF00": "Yellow",
+	"Color.Hud.FF8C00": "Orange",
+	"Color.Hud.FF3030": "Red",
+	"Color.Hud.F3005D": "Raspberry",
+	"Color.Hud.B347FF": "Purple",
+	"Color.Hud.FFFFFF": "White"
 }

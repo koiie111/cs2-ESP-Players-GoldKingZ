@@ -25,6 +25,7 @@ public sealed class ClientPrefs
     public string Glow_Color_T { get; set; } = "";
 }
 
+[MinimumApiVersion(374)]
 public partial class MainPlugin : BasePlugin
 {
     public override string ModuleName => "Always-on ESP Players";
@@ -42,6 +43,7 @@ public partial class MainPlugin : BasePlugin
     {
         Instance = this;
         Configs.Load(ModuleDirectory, hotReload);
+        PanoramaManager.Panorama.Init(this);
 
         _api = new ESPPlayersApiImpl();
         Capabilities.RegisterPluginCapability(Shared.ESPPlayersApi.Capability, () => _api);
@@ -125,6 +127,7 @@ public partial class MainPlugin : BasePlugin
         var player = Utilities.GetPlayerFromSlot(playerSlot);
         if(player == null || !player.IsValid)return;
 
+        ForgetEspHud(playerSlot);
         _pendingColorInputs.Remove(playerSlot);
         Helper.CheckPlayerInGlobals(player);
         ScheduleEspReconcile();
@@ -188,6 +191,7 @@ public partial class MainPlugin : BasePlugin
     public override void Unload(bool hotReload)
     {
         StopEspRuntime();
+        PanoramaManager.Panorama.Shutdown();
         try
         {
             _prefs?.Unload();

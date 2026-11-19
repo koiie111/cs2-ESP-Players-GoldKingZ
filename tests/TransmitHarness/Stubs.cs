@@ -64,6 +64,8 @@ namespace ESP_Players_GoldKingZ
     {
         public static MainPlugin Instance = null!;
         private readonly Dictionary<int, int> _pendingColorInputs = new();
+        private void CloseAllEspHuds() { }
+        private void ForgetEspHud(int slot) { }
         public string ModuleDirectory = "";
         public class Enabled { public bool Value = true; }
         public Enabled g_EnablePlugin = new();
