@@ -1,4 +1,3 @@
-using CS2MenuManager.API.Class;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
@@ -30,6 +29,7 @@ public partial class MainPlugin
 
     [ConsoleCommand("css_esp", "Open or close ESP color settings")]
     [ConsoleCommand("css_wh", "Open or close ESP color settings")]
+    [ConsoleCommand("css_color", "Open or close ESP color settings")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
     public void OnEspHudCommand(CCSPlayerController? player, CommandInfo info)
     {
@@ -43,12 +43,11 @@ public partial class MainPlugin
 
         if (!Configs.Instance.PanoramaMenuEnabled || !Panorama.CanReceiveClicks)
         {
-            OnColorCommand(player, info);
+            PrintColorMessage(player, "Color.Hud.Unavailable");
             return;
         }
 
         _pendingColorInputs.Remove(player.Slot);
-        MenuManager.CloseActiveMenu(player);
         OpenEspHud(player, GlowTeamChoice.CounterTerrorist);
     }
 
@@ -81,9 +80,7 @@ public partial class MainPlugin
         }
 
         _espHudViews.Remove(player.Slot);
-        PrintColorMessage(player, "Color.Hud.Fallback");
-        EnsureMenuControlTranslations();
-        ShowColorTeamMenu(player);
+        PrintColorMessage(player, "Color.Hud.Unavailable");
     }
 
     private void CloseAllEspHuds()
@@ -176,8 +173,8 @@ public partial class MainPlugin
         bool isPreset = Array.IndexOf(PresetColors, previewHex) >= 0;
 
         menu.SetVariableFor(player, "esp_title", HudText(player, "Color.Hud.Title"))
-            .SetVariableFor(player, "esp_ct_label", HudText(player, "Color.Menu.CT"))
-            .SetVariableFor(player, "esp_t_label", HudText(player, "Color.Menu.T"))
+            .SetVariableFor(player, "esp_ct_label", HudText(player, "Color.Hud.CT"))
+            .SetVariableFor(player, "esp_t_label", HudText(player, "Color.Hud.T"))
             .SetVariableFor(player, "esp_hex_button", HudText(player, "Color.Hud.Custom"))
             .SetVariableFor(player, "esp_color_name", HudText(player, isPreset ? $"Color.Hud.{previewHex[1..]}" : "Color.Hud.CustomName"))
             .SetVariableFor(player, "esp_hex_value", previewHex)

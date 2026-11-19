@@ -119,7 +119,7 @@
     vertical-align: bottom;
 }
 
-.esp-channel, .esp-portrait {
+.esp-channel {
     width: 100%;
     height: 100%;
 }
@@ -133,30 +133,29 @@
 .esp-green { background-color: #00ff00; }
 .esp-blue { background-color: #0000ff; }
 
+/* The client already has these two agent portraits. Reuse their alpha for the glow. */
 .esp-art .esp-channel, .esp-portrait {
+    width: 232px;
+    height: 232px;
+    align: center bottom;
+    background-image: url("s2r://panorama/images/econ/characters/customplayer_ctm_st6_square_png.vtex");
     background-size: 100% 100%;
     background-repeat: no-repeat;
 }
 
 .esp-art .esp-channel {
     background-color: #00000000;
-    background-image: url("file://{images}/custom_game/gkz_esp_ct_mask.png");
+    transform-origin: 50% 100%;
+    transform: scale3d(1.04, 1.04, 1);
+    blur: gaussian(3);
 }
 
 .esp-art .esp-red { wash-color: #ff0000; }
 .esp-art .esp-green { wash-color: #00ff00; }
 .esp-art .esp-blue { wash-color: #0000ff; }
 
-.esp-portrait {
-    background-image: url("file://{images}/custom_game/gkz_esp_ct.png");
-}
-
-.esp-team-t .esp-art .esp-channel {
-    background-image: url("file://{images}/custom_game/gkz_esp_t_mask.png");
-}
-
-.esp-team-t .esp-portrait {
-    background-image: url("file://{images}/custom_game/gkz_esp_t.png");
+.esp-team-t .esp-art .esp-channel, .esp-team-t .esp-portrait {
+    background-image: url("s2r://panorama/images/econ/characters/customplayer_tm_phoenix_square_png.vtex");
 }
 
 .esp-color-copy {
@@ -199,14 +198,19 @@
 .esp-check {
     visibility: collapse;
     align: center center;
-    font-size: 22px;
-    font-weight: bold;
-    color: #111217;
     background-color: #ffffffed;
     width: 26px;
     height: 26px;
-    text-align: center;
     border-radius: 50%;
+}
+
+.esp-check-mark {
+    align: center center;
+    width: 7px;
+    height: 13px;
+    border-right: 2px solid #111217;
+    border-bottom: 2px solid #111217;
+    transform: rotatez(45deg);
 }
 
 .esp-swatch.esp-selected { border-color: #ffffff; }

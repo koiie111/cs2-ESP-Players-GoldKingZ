@@ -1,13 +1,10 @@
 using System.Drawing;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Commands;
 using CounterStrikeSharp.API.Modules.Utils;
-using CS2MenuManager.API.Menu;
 using ESP_Players_GoldKingZ.Config;
 
 namespace ESP_Players_GoldKingZ;
@@ -39,79 +36,6 @@ public partial class MainPlugin
 
     private readonly Dictionary<int, GlowTeamChoice> _pendingColorInputs = new();
 
-    [ConsoleCommand("css_color", "Open the personal ESP glow color menu")]
-    [CommandHelper(whoCanExecute: CommandUsage.CLIENT_ONLY)]
-    public void OnColorCommand(CCSPlayerController? player, CommandInfo info)
-    {
-        if (!_runtimeActive || player == null || !player.IsValid) return;
-
-        CloseEspHud(player.Slot);
-        EnsureMenuControlTranslations();
-
-        if (_prefs == null || !_prefs.TryGetValue(player.Slot, out _))
-        {
-            PrintColorMessage(player, "Color.PrefsUnavailable");
-            return;
-        }
-
-        _pendingColorInputs.Remove(player.Slot);
-        ShowColorTeamMenu(player);
-    }
-
-    private void ShowColorTeamMenu(CCSPlayerController player)
-    {
-        CreateColorTeamMenu(player).Display(player, 0);
-    }
-
-    private WasdMenu CreateColorTeamMenu(CCSPlayerController player)
-    {
-        var menu = new WasdMenu(Localizer.ForPlayer(player, "Color.Menu.Title"), this);
-
-        string ctHex = GetEffectiveGlowHex(player.Slot, (byte)CsTeam.CounterTerrorist);
-        menu.AddItem(
-            $"{Localizer.ForPlayer(player, "Color.Menu.CT")} {ColorPreview(ctHex)}",
-            (selectedPlayer, _) => ShowPresetColorMenu(selectedPlayer, GlowTeamChoice.CounterTerrorist));
-
-        string tHex = GetEffectiveGlowHex(player.Slot, (byte)CsTeam.Terrorist);
-        menu.AddItem(
-            $"{Localizer.ForPlayer(player, "Color.Menu.T")} {ColorPreview(tHex)}",
-            (selectedPlayer, _) => ShowPresetColorMenu(selectedPlayer, GlowTeamChoice.Terrorist));
-
-        return menu;
-    }
-
-    private void ShowPresetColorMenu(CCSPlayerController player, GlowTeamChoice team)
-    {
-        byte teamNumber = TeamNumber(team);
-        string currentHex = GetEffectiveGlowHex(player.Slot, teamNumber);
-        string teamName = Localizer.ForPlayer(player, team == GlowTeamChoice.CounterTerrorist ? "Color.Menu.CT" : "Color.Menu.T");
-        var menu = new WasdMenu(
-            $"{teamName}: {Localizer.ForPlayer(player, "Color.Menu.Current")} {ColorPreview(currentHex)}",
-            this)
-        {
-            PrevMenu = CreateColorTeamMenu(player)
-        };
-
-        foreach (string presetHex in PresetColors)
-        {
-            string selectedHex = presetHex;
-            menu.AddItem(ColorPreview(selectedHex), (selectedPlayer, _) =>
-            {
-                ApplyGlowColor(selectedPlayer, team, selectedHex);
-            });
-        }
-
-        menu.AddItem(Localizer.ForPlayer(player, "Color.Menu.Custom"), (selectedPlayer, _) =>
-        {
-            if (!_runtimeActive) return;
-            _pendingColorInputs[selectedPlayer.Slot] = team;
-            PrintColorMessage(selectedPlayer, "Color.Custom.Prompt");
-            PrintColorMessage(selectedPlayer, "Color.Custom.Picker");
-        });
-
-        menu.Display(player, 0);
-    }
-
     // CounterStrikeSharp keys command listeners by delegate. Each registration needs its own method.
     public HookResult OnTeamColorInput(CCSPlayerController? player, CommandInfo info) => OnColorInput(player, info);
 
@@ -133,14 +57,12 @@ public partial class MainPlugin
             return HookResult.Handled;
         }
 
-        if (_espHudViews.TryGetValue(player.Slot, out var view) && view.AwaitingHex
-            && (message.Equals("!esp", StringComparison.OrdinalIgnoreCase)
-                || message.Equals("!wh", StringComparison.OrdinalIgnoreCase)
-                || message.Equals("!color", StringComparison.OrdinalIgnoreCase)))
+        if (message.Equals("!esp", StringComparison.OrdinalIgnoreCase)
+            || message.Equals("!wh", StringComparison.OrdinalIgnoreCase)
+            || message.Equals("!color", StringComparison.OrdinalIgnoreCase))
         {
-            bool openFallback = message.Equals("!color", StringComparison.OrdinalIgnoreCase);
             CloseEspHud(player.Slot);
-            return openFallback ? HookResult.Continue : HookResult.Handled;
+            return HookResult.Handled;
         }
 
         if (!TryNormalizeHex(message, out string normalizedHex))
@@ -176,7 +98,7 @@ public partial class MainPlugin
         ScheduleEspReconcile();
         if (announce)
         {
-            string teamName = Localizer.ForPlayer(player, team == GlowTeamChoice.CounterTerrorist ? "Color.Menu.CT" : "Color.Menu.T");
+            string teamName = Localizer.ForPlayer(player, team == GlowTeamChoice.CounterTerrorist ? "Color.Hud.CT" : "Color.Hud.T");
             Helper.AdvancedPlayerPrintToChat(player, null!, Localizer.ForPlayer(player, "Color.Applied"), teamName, hex);
         }
         return true;
@@ -221,65 +143,6 @@ public partial class MainPlugin
         return match.Success;
     }
 
-    private static byte TeamNumber(GlowTeamChoice team)
-        => team == GlowTeamChoice.CounterTerrorist
-            ? (byte)CsTeam.CounterTerrorist
-            : (byte)CsTeam.Terrorist;
-
-    private static string ColorPreview(string hex)
-        => $"<font color='{hex}'>■ {hex}</font>";
-
     private void PrintColorMessage(CCSPlayerController player, string localizationKey)
         => Helper.AdvancedPlayerPrintToChat(player, null!, Localizer.ForPlayer(player, localizationKey));
-
-    private static void EnsureMenuControlTranslations()
-    {
-        try
-        {
-            Type? configManagerType = typeof(WasdMenu).Assembly.GetType("CS2MenuManager.API.Class.ConfigManager");
-            object? config = configManagerType?
-                .GetProperty("Config", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?
-                .GetValue(null);
-            var languages = config?.GetType().GetProperty("Lang")?.GetValue(config)
-                as Dictionary<string, Dictionary<string, string>>;
-
-            if (languages == null) return;
-
-            MergeMenuLanguage(languages, "ru", new Dictionary<string, string>
-            {
-                ["ScrollKey"] = "[{0}/{1}] Перемещение",
-                ["SelectKey"] = "[{0}] Выбрать",
-                ["PrevKey"] = "[{0}] Назад",
-                ["ExitKey"] = "[{0}] Закрыть"
-            });
-            MergeMenuLanguage(languages, "en", new Dictionary<string, string>
-            {
-                ["ScrollKey"] = "[{0}/{1}] Navigate",
-                ["SelectKey"] = "[{0}] Select",
-                ["PrevKey"] = "[{0}] Back",
-                ["ExitKey"] = "[{0}] Close"
-            });
-        }
-        catch (Exception exception)
-        {
-            Helper.DebugMessage($"Unable to register CS2MenuManager control translations: {exception.Message}", true);
-        }
-    }
-
-    private static void MergeMenuLanguage(
-        Dictionary<string, Dictionary<string, string>> languages,
-        string language,
-        Dictionary<string, string> translations)
-    {
-        if (!languages.TryGetValue(language, out var currentLanguage))
-        {
-            currentLanguage = new Dictionary<string, string>();
-            languages[language] = currentLanguage;
-        }
-
-        foreach (var translation in translations)
-        {
-            currentLanguage[translation.Key] = translation.Value;
-        }
-    }
 }
