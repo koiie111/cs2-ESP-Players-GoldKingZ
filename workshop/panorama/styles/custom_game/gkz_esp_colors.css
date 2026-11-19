@@ -133,30 +133,34 @@
 .esp-green { background-color: #00ff00; }
 .esp-blue { background-color: #0000ff; }
 
-/* The client already has these two agent portraits. Reuse their alpha for the glow. */
-.esp-art .esp-channel, .esp-portrait {
-    width: 232px;
-    height: 232px;
-    align: center bottom;
-    background-image: url("s2r://panorama/images/econ/characters/customplayer_ctm_st6_square_png.vtex");
+/* Reuse the wider stock portraits so the source image has room around the shoulders. */
+.esp-agent {
+    width: 264px;
+    height: 198px;
+    align: center center;
+    background-image: url("s2r://panorama/images/econ/characters/customplayer_ctm_st6_png.vtex");
     background-size: 100% 100%;
     background-repeat: no-repeat;
 }
 
+.esp-team-t .esp-agent {
+    background-image: url("s2r://panorama/images/econ/characters/customplayer_tm_phoenix_png.vtex");
+}
+
+/* Expand the alpha in all four directions, keeping the outline even on tilted portraits. */
+.esp-edge-left { x: -2px; }
+.esp-edge-right { x: 2px; }
+.esp-edge-top { y: -2px; }
+.esp-edge-bottom { y: 2px; }
+
 .esp-art .esp-channel {
     background-color: #00000000;
-    transform-origin: 50% 100%;
-    transform: scale3d(1.04, 1.04, 1);
-    blur: gaussian(3);
+    blur: gaussian(1.5);
 }
 
 .esp-art .esp-red { wash-color: #ff0000; }
 .esp-art .esp-green { wash-color: #00ff00; }
 .esp-art .esp-blue { wash-color: #0000ff; }
-
-.esp-team-t .esp-art .esp-channel, .esp-team-t .esp-portrait {
-    background-image: url("s2r://panorama/images/econ/characters/customplayer_tm_phoenix_square_png.vtex");
-}
 
 .esp-color-copy {
     x: 302px;

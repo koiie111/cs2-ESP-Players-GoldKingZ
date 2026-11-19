@@ -30,10 +30,25 @@
             </Panel>
             <Panel id="esp_preview" class="esp-preview" hittest="false">
                 <Panel class="esp-art" hittest="false">
-                    <Panel id="esp_outline_0" class="esp-channel esp-red" hittest="false" />
-                    <Panel id="esp_outline_1" class="esp-channel esp-green" hittest="false" />
-                    <Panel id="esp_outline_2" class="esp-channel esp-blue" hittest="false" />
-                    <Panel class="esp-portrait" hittest="false" />
+                    <Panel id="esp_outline_0" class="esp-channel esp-red" hittest="false">
+                        <Panel class="esp-agent esp-edge-left" hittest="false" />
+                        <Panel class="esp-agent esp-edge-right" hittest="false" />
+                        <Panel class="esp-agent esp-edge-top" hittest="false" />
+                        <Panel class="esp-agent esp-edge-bottom" hittest="false" />
+                    </Panel>
+                    <Panel id="esp_outline_1" class="esp-channel esp-green" hittest="false">
+                        <Panel class="esp-agent esp-edge-left" hittest="false" />
+                        <Panel class="esp-agent esp-edge-right" hittest="false" />
+                        <Panel class="esp-agent esp-edge-top" hittest="false" />
+                        <Panel class="esp-agent esp-edge-bottom" hittest="false" />
+                    </Panel>
+                    <Panel id="esp_outline_2" class="esp-channel esp-blue" hittest="false">
+                        <Panel class="esp-agent esp-edge-left" hittest="false" />
+                        <Panel class="esp-agent esp-edge-right" hittest="false" />
+                        <Panel class="esp-agent esp-edge-top" hittest="false" />
+                        <Panel class="esp-agent esp-edge-bottom" hittest="false" />
+                    </Panel>
+                    <Panel class="esp-agent" hittest="false" />
                 </Panel>
                 <Panel class="esp-color-copy" hittest="false">
                     <Label class="esp-color-name" text="{s:esp_color_name}" hittest="false" />
