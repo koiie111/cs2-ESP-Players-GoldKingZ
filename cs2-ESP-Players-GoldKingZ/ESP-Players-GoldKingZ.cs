@@ -112,15 +112,6 @@ public partial class MainPlugin : BasePlugin
         }
     }
 
-    public HookResult OnEventRoundStart(EventRoundStart @event, GameEventInfo info)
-    {
-        if (@event == null || !_runtimeActive) return HookResult.Continue;
-
-        Helper.StartTimer();
-
-        return HookResult.Continue;
-    }
-    
     public void OnClientPutInServer(int playerSlot)
     {
         var player = Utilities.GetPlayerFromSlot(playerSlot);

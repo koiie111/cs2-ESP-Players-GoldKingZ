@@ -20,9 +20,9 @@ internal sealed class GlowDemand
             if (viewer.IsHLTV ? config.DisableGlowOnGOTV : viewer.IsBot) continue;
             int slot = viewer.Slot;
             byte team = viewer.TeamNum;
+            var (ctColor, tColor) = plugin.GetGlowDemandColors(slot);
             if (!config.ShowOnlyEnemyTeam || team != 3)
-                Request(_ct, plugin.GetViewerGlowColor(slot, 3).ToArgb(), slot);
-            int tColor = plugin.GetViewerGlowColor(slot, 2).ToArgb();
+                Request(_ct, ctColor, slot);
             if (!config.ShowOnlyEnemyTeam || team != 2)
                 Request(_t, tColor, slot);
             Request(_other, tColor, slot);
@@ -51,7 +51,7 @@ public partial class Helper
         var colors = new GlowDemand(plugin, controllers);
         foreach (var player in controllers)
         {
-            if (player.IsHLTV) continue;
+            if (!player.IsValid || player.IsHLTV) continue;
             if (spawns != null)
             {
                 // An old spawn must not target the next connection in the same slot.
@@ -61,7 +61,20 @@ public partial class Helper
                     || current.Player.EntityHandle.Raw != player.EntityHandle.Raw) continue;
             }
             CheckPlayerInGlobals(player);
-            SetGlowPlayer(player, colors);
+            int slot = player.Slot;
+            var data = plugin.g_Main.Player_Data[slot];
+            var target = player.Get_CCSPlayerController_ControlledBot();
+            // The relay is invisible and serves only as a parent for a requested glow.
+            if (target is { IsValid: true })
+            {
+                var desired = colors.ForTeam(target.TeamNum);
+                if (desired.Count > 1 || (desired.Count == 1 && !desired.ContainsValue(slot)))
+                {
+                    SetGlowPlayer(data, slot, target, desired);
+                    continue;
+                }
+            }
+            if (data.ModelRelay != null || data.ModelGlows.Count != 0) RemoveGlowData(data);
         }
     }
 }

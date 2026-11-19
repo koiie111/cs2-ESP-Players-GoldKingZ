@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using GameTimer = CounterStrikeSharp.API.Modules.Timers.Timer;
 using CounterStrikeSharp.API.Core;
 using ESP_Players_GoldKingZ;
 using ESP_Players_GoldKingZ.Config;
@@ -111,7 +112,7 @@ static class Program
         plugin.QueueReconcile();
         plugin.QueueReconcile();
         if (CounterStrikeSharp.API.Server.Frames.Count != 1) throw new Exception("Reconcile was not coalesced");
-        var oldTimer = plugin.CreateEspTimer();
+        var oldTimer = GameTimer.Repeating.Single();
         plugin.StopEspRuntime();
         if (plugin.PendingInputs != 0) throw new Exception("Pending chat input survived map end");
         CounterStrikeSharp.API.Server.Flush();
@@ -130,7 +131,7 @@ static class Program
         if (Helper.Reconciles != 1) throw new Exception("Map change executed stale reconciliation");
         oldTimer.Fire();
         if (Helper.Reconciles != 1) throw new Exception("Old timer crossed map generation");
-        plugin.g_Main.Timer.Fire();
+        GameTimer.Repeating.Single().Fire();
         if (Helper.Reconciles != 2) throw new Exception("New map timer did not run");
 
         var oldPlayer = new CCSPlayerController { Slot = 5, TeamNum = 2, EntityHandle = (100, 5) };
@@ -149,6 +150,8 @@ static class Program
         plugin.g_Main.Player_Data[5] = new Globals.PlayerDataClass { Player = replacement };
         CounterStrikeSharp.API.Server.Flush();
         if (Helper.Spawns != 0) throw new Exception("Old connection spawned props after slot reuse");
+        // A spectator creates real demand for the otherwise solitary target.
+        CounterStrikeSharp.API.Utilities.Connected.Add(new CCSPlayerController { Slot = 40, TeamNum = 1 });
         plugin.OnEspSpawn(new EventPlayerSpawn { Userid = replacement }, new GameEventInfo());
         CounterStrikeSharp.API.Server.Flush();
         if (Helper.Spawns != 1) throw new Exception("Replacement connection could not spawn");
@@ -209,11 +212,46 @@ static class Program
         plugin.StopEspRuntime();
         Console.WriteLine("PASS actual lifecycle callbacks: map generations, old/new timers, coalescing, disconnect with valid old wrapper, slot reuse, pending chat, duplicate/native deletion, owned cleanup");
     }
+    static void CheckRelayDemand()
+    {
+        var plugin = MainPlugin.Instance = new MainPlugin();
+        var player = new CCSPlayerController { Slot = 3, TeamNum = 2 };
+        var teammate = new CCSPlayerController { Slot = 4, TeamNum = 2 };
+        var gotv = new CCSPlayerController { Slot = 5, TeamNum = 1, IsBot = true, IsHLTV = true };
+        CounterStrikeSharp.API.Utilities.Connected = [player, teammate, gotv];
+        Configs.Instance.ShowOnlyEnemyTeam = true;
+        Configs.Instance.DisableGlowOnGOTV = true;
+        var relay = Prop(77);
+        var glow = Prop(78);
+        plugin.TrackEspEntity(relay);
+        plugin.TrackEspEntity(glow);
+        var data = new Globals.PlayerDataClass { Player = player, ModelRelay = relay };
+        data.ModelGlows[1] = glow;
+        plugin.g_Main.Player_Data[player.Slot] = data;
+        int setups = Helper.Spawns;
+        Helper.ESP_Timer();
+        if (plugin.TrackedCount != 0 || relay.RemoveCalls != 1 || glow.RemoveCalls != 1 || Helper.Spawns != setups)
+            throw new Exception("Last eligible viewer leaving retained or recreated an invisible relay");
+        Configs.Instance.DisableGlowOnGOTV = false;
+        Helper.ESP_Timer();
+        if (Helper.Spawns != setups + 2) throw new Exception("GOTV did not restore demand for both targets");
+
+        Configs.Instance.ShowOnlyEnemyTeam = false;
+        CounterStrikeSharp.API.Utilities.Connected = [player];
+        Helper.ESP_Timer();
+        if (Helper.Spawns != setups + 2) throw new Exception("Self-only color created a relay");
+        CounterStrikeSharp.API.Utilities.Connected.Add(teammate);
+        Helper.ESP_Timer();
+        if (Helper.Spawns != setups + 4) throw new Exception("Second viewer sharing a color did not restore demand");
+        Console.WriteLine("PASS relay demand: teammates, self-only color, last viewer leaving, shared color and GOTV");
+    }
+
     static void Main()
     {
         System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
         CheckLifecycle();
         HudTests.Run();
+        CheckRelayDemand();
         Console.WriteLine("case,mean_us,p95_us,p99_us,bytes_per_call");
         foreach (int count in new[] { 1, 24, 64 })
         foreach (int palette in new[] { 1, 4, 64 })
@@ -261,11 +299,18 @@ static class Program
             var expected = Copy(infos, false);
             Baseline(plugin, expected);
             foreach (var (slot, data) in plugin.g_Main.Player_Data)
-            foreach (var (color, prop) in data.ModelGlows)
             {
-                if (newEntities[slot].Contains(color)) continue;
-                data.ModelGlows.Remove(color);
-                plugin.RemoveEspEntity(prop);
+                foreach (var (color, prop) in data.ModelGlows)
+                {
+                    if (newEntities[slot].Contains(color)) continue;
+                    data.ModelGlows.Remove(color);
+                    plugin.RemoveEspEntity(prop);
+                }
+                if (newEntities[slot].Count == 0)
+                {
+                    plugin.RemoveEspEntity(data.ModelRelay);
+                    data.ModelRelay = null;
+                }
             }
             var actual = Copy(infos, false);
             plugin.Run(actual);
@@ -292,7 +337,7 @@ static class Program
             var first = plugin.g_Main.Player_Data[0];
             first.Player.Controlled = new CCSPlayerController { TeamNum = 3 }; Equal(plugin, infos); CheckDemand(plugin, viewers);
             first.Player.Controlled = null;
-            var deleted = first.ModelRelay!;
+            var deleted = first.ModelRelay ??= Prop(id++);
             plugin.TrackEspEntity(deleted); plugin.OnEspEntityDeleted(deleted);
             // The deletion notification arrives before the native wrapper becomes invalid.
             foreach (var info in infos) info.Item1.TransmitEntities.Clear();

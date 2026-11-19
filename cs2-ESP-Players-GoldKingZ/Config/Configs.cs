@@ -189,7 +189,7 @@ namespace ESP_Players_GoldKingZ.Config
         [Comment("false = No (Show All)")]
         public bool ShowOnlyEnemyTeam { get; set; } = true;
 
-        [Comment("Enable Panorama menus for !wh and !esp after mounting the ESP color HUD Workshop addon")]
+        [Comment("Enable the Panorama menu for !wh, !esp and !color after mounting the ESP color HUD Workshop addon")]
         public bool PanoramaMenuEnabled { get; set; }
 
         [BreakLine("----------------------------[ ↓ Glow Config ↓ ]----------------------------{nextline}")]

@@ -5,8 +5,6 @@ namespace ESP_Players_GoldKingZ;
 
 public class Globals
 {
-    public CounterStrikeSharp.API.Modules.Timers.Timer Timer = null!;
-
     public class PlayerDataClass
     {
         public CCSPlayerController Player { get; set; }
@@ -27,18 +25,4 @@ public class Globals
         }
     }
     public Dictionary<int, PlayerDataClass> Player_Data = new Dictionary<int, PlayerDataClass>();
-
-    public void Clear()
-    {
-        var timer = Timer;
-        Timer = null!;
-        try
-        {
-            timer?.Kill();
-        }
-        finally
-        {
-            Helper.RemoveAllPlayersGlow();
-        }
-    }
 }

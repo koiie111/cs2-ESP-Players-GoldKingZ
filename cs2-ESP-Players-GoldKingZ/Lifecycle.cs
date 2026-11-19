@@ -1,6 +1,5 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Timers;
 
 namespace ESP_Players_GoldKingZ;
 
@@ -9,12 +8,10 @@ public partial class MainPlugin
     public void OnMapStart(string mapname)
     {
         StopEspRuntime();
-        // STOP_ON_MAPCHANGE timers and old-map entities already belong to the previous world.
-        g_Main.Timer = null!;
+        // Discard wrappers belonging to the previous world.
         g_Main.Player_Data.Clear();
         ClearTransmitCache();
         StartEspRuntime();
-        Helper.StartTimer();
         ScheduleEspReconcile();
     }
 
@@ -47,24 +44,26 @@ public partial class MainPlugin
 
     private bool _runtimeActive;
 
-    public void StartEspRuntime() => _runtimeActive = true;
+    private OwnedGameTimer? _sweepTimer;
+
+    public void StartEspRuntime()
+    {
+        _runtimeActive = true;
+        _sweepTimer ??= new OwnedGameTimer(3.0f, () =>
+        {
+            if (_runtimeActive && g_EnablePlugin.Value) Helper.ESP_Timer();
+        }, repeat: true);
+    }
 
     public void StopEspRuntime()
     {
         _runtimeActive = false;
+        _sweepTimer?.Cancel();
+        _sweepTimer = null;
         _runtimeGeneration++;
         _reconcilePending = false;
         _pendingSpawns = null;
         CloseAllEspHuds();
-    }
-
-    public CounterStrikeSharp.API.Modules.Timers.Timer CreateEspTimer()
-    {
-        int generation = _runtimeGeneration;
-        return AddTimer(3.0f, () =>
-        {
-            if (_runtimeActive && generation == _runtimeGeneration && g_EnablePlugin.Value) Helper.ESP_Timer();
-        }, TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
     }
 
     private bool _reconcilePending;

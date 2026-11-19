@@ -264,12 +264,10 @@ public partial class Helper
 
     public static void ClearVariables()
     {
-        var g_Main = MainPlugin.Instance.g_Main;
-
         MainPlugin.Instance.StopEspRuntime();
         try
         {
-            g_Main.Clear();
+            RemoveAllPlayersGlow();
         }
         finally
         {
@@ -368,16 +366,9 @@ public partial class Helper
         }
     }
 
-    private static void SetGlowPlayer(CCSPlayerController Getplayer, GlowDemand colors)
+    private static void SetGlowPlayer(Globals.PlayerDataClass handle, int slot, CCSPlayerController player,
+        Dictionary<int, int> desiredColors)
     {
-        var g_Main = MainPlugin.Instance.g_Main;
-        if(Getplayer == null 
-        || !Getplayer.IsValid
-        || !g_Main.Player_Data.TryGetValue(Getplayer.Slot, out var handle)) return;
-
-        var player = Getplayer.Get_CCSPlayerController_ControlledBot();
-        if(player == null || !player.IsValid) return;
-
         var pawn = player.PlayerPawn.Value;
         bool alive = pawn != null && pawn.IsValid && pawn.LifeState == (byte)LifeState_t.LIFE_ALIVE;
         string player_model = alive ? pawn!.CBodyComponent?.SceneNode?.GetSkeletonInstance().ModelState.ModelName ?? "" : "";
@@ -390,13 +381,13 @@ public partial class Helper
 
             if(!ModelChanged && alive && handle.PawnHandle == pawnHandle)
             {
-                EnsureViewerGlows(handle, Getplayer.Slot, player, handle.Player_ModelName, colors);
+                EnsureViewerGlows(handle, slot, player, handle.Player_ModelName, desiredColors);
                 return;
             }
 
         }
 
-        RemoveGlow(Getplayer);
+        RemoveGlowData(handle);
 
         if (!alive
         || string.IsNullOrEmpty(player_model))return;
@@ -417,7 +408,7 @@ public partial class Helper
 
             handle.ModelRelay.AcceptInput("FollowEntity", pawn, handle.ModelRelay, "!activator");
             handle.Player_ModelName = player_model;
-            EnsureViewerGlows(handle, Getplayer.Slot, player, handle.Player_ModelName, colors);
+            EnsureViewerGlows(handle, slot, player, handle.Player_ModelName, desiredColors);
         }
         catch (Exception ex)
         {
@@ -426,9 +417,8 @@ public partial class Helper
         }
     }
 
-    private static void EnsureViewerGlows(Globals.PlayerDataClass handle, int slot, CCSPlayerController target, string playerModel, GlowDemand colors)
+    private static void EnsureViewerGlows(Globals.PlayerDataClass handle, int slot, CCSPlayerController target, string playerModel, Dictionary<int, int> desiredColors)
     {
-        var desiredColors = colors.ForTeam(target.TeamNum);
         foreach (var (key, prop) in handle.ModelGlows)
         {
             if (desiredColors.TryGetValue(key, out int owner) && owner != slot && MainPlugin.Instance.IsEspEntityAlive(prop)) continue;
@@ -466,15 +456,6 @@ public partial class Helper
         }
     }
 
-    public static void StartTimer()
-    {
-        var g_Main = MainPlugin.Instance.g_Main;
-        if(g_Main.Timer == null)
-        {
-            g_Main.Timer = MainPlugin.Instance.CreateEspTimer();
-        }
-    }
-
     public static void ReloadPlayersGlobals()
     {
         ESP_Timer();
@@ -503,19 +484,19 @@ public partial class Helper
         MainPlugin.Instance.RegisterEventHandler<EventPlayerSpawn>(MainPlugin.Instance.OnEspSpawn);
         MainPlugin.Instance.RegisterEventHandler<EventPlayerTeam>(MainPlugin.Instance.OnEspTeam);
         MainPlugin.Instance.RegisterEventHandler<EventBotTakeover>(MainPlugin.Instance.OnEspBotTakeover);
-        MainPlugin.Instance.RegisterEventHandler<EventRoundStart>(MainPlugin.Instance.OnEventRoundStart);
         MainPlugin.Instance.RegisterEventHandler<EventPlayerDeath>(MainPlugin.Instance.OnEventPlayerDeath);
         MainPlugin.Instance.RegisterListener<Listeners.OnClientDisconnect>(MainPlugin.Instance.OnEspClientDisconnect);
 
         MainPlugin.Instance.AddCommandListener("say", MainPlugin.Instance.OnPlayerSay, HookMode.Post);
         MainPlugin.Instance.AddCommandListener("say_team", MainPlugin.Instance.OnPlayerSay_Team, HookMode.Post);
-        MainPlugin.Instance.AddCommandListener("say", MainPlugin.Instance.OnColorInput, HookMode.Pre);
-        MainPlugin.Instance.AddCommandListener("say_team", MainPlugin.Instance.OnTeamColorInput, HookMode.Pre);
+        if (Configs.Instance.PanoramaMenuEnabled)
+        {
+            MainPlugin.Instance.AddCommandListener("say", MainPlugin.Instance.OnColorInput, HookMode.Pre);
+            MainPlugin.Instance.AddCommandListener("say_team", MainPlugin.Instance.OnTeamColorInput, HookMode.Pre);
+        }
         MainPlugin.Instance.HookUserMessage(118, MainPlugin.Instance.OnUserMessage_OnSayText2, HookMode.Pre);
 
         RegisterCssCommands(Configs.Instance.Reload_Plugin.Reload_Plugin_CommandsInGame.ConvertCommands(), "Commands To Reload ESP Plugin", MainPlugin.Instance.Game_UserMessages.CommandsAction_ReloadPlugin);
-
-        StartTimer();
     }
 
     public static void RemoveRegisterCommandsAndHooks()
@@ -532,7 +513,6 @@ public partial class Helper
         MainPlugin.Instance.DeregisterEventHandler<EventPlayerSpawn>(MainPlugin.Instance.OnEspSpawn);
         MainPlugin.Instance.DeregisterEventHandler<EventPlayerTeam>(MainPlugin.Instance.OnEspTeam);
         MainPlugin.Instance.DeregisterEventHandler<EventBotTakeover>(MainPlugin.Instance.OnEspBotTakeover);
-        MainPlugin.Instance.DeregisterEventHandler<EventRoundStart>(MainPlugin.Instance.OnEventRoundStart);
         MainPlugin.Instance.DeregisterEventHandler<EventPlayerDeath>(MainPlugin.Instance.OnEventPlayerDeath);
         MainPlugin.Instance.RemoveListener<Listeners.OnClientDisconnect>(MainPlugin.Instance.OnEspClientDisconnect);
 

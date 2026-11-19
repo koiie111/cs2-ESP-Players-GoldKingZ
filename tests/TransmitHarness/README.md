@@ -10,7 +10,27 @@ dotnet run --project tests/TransmitHarness -c Release
 
 The harness also runs the production color menu against a recording Panorama handle. It checks that a repeated selection produces zero HUD writes and zero reconciliation frames, a one-channel preset change produces eight writes, and a restore replays all 28. It covers per-viewer isolation, explicit defaults, failed class writes, private chat routing, recycled slots and timer cleanup. These counts measure calls to the renderer. Native frame times and persistence through the external ClientPrefs provider require an in-game run.
 
-## CheckTransmit
+## PR 2 review
+
+Times are microseconds for one complete recipient list. Each column is the median of three process means (200 warm-ups and 1,000 measured calls per process). Main, the incoming HUD branch, and the revised HUD branch ran in rotating order on the same machine, with tiered compilation disabled. The last column is the median of the three revised p99 values.
+
+| Players | Palette | Main `9fc59a0` | HUD `8e6dad1` | Revised HUD | Time saved vs incoming HUD | Revised p99 |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 1 | 0.058 | 0.060 | 0.015 | 75.0% | 0.100 |
+| 24 | 1 | 2.386 | 2.352 | 1.840 | 21.8% | 1.900 |
+| 24 | 4 | 3.346 | 3.334 | 2.899 | 13.0% | 3.000 |
+| 24 | 24 | 12.469 | 12.629 | 11.262 | 10.8% | 11.900 |
+| 64 | 1 | 12.267 | 12.301 | 9.978 | 18.9% | 10.500 |
+| 64 | 4 | 14.150 | 14.083 | 11.761 | 16.5% | 14.500 |
+| 64 | 64 | 176.887 | 178.265 | 180.314 | -1.1% | 235.300 |
+
+The one-player fixture now drops the invisible relay as well as the glow. A team with no eligible viewers does the same. With 64 distinct colors, 32v32 still needs 2,048 glow props and 64 relays, and each recipient's transmit plan still visits them. The three-run comparison shows no measurable improvement in that case. All steady-state managed cases measured zero allocated bytes per callback.
+
+The HUD fixture counts renderer calls per action. Compared with the full redraw in `aacded3`, clicking the current preset goes from 28 calls to zero and changing one RGB channel from 30 to eight. Opening or restoring costs 28 calls. After the last close, the 1.1-second grace timer disposes the handle. PanoramaManager's registered transmit listener then returns before enumerating recipients. The timer tests exercise 50 map changes followed by stop, and the HUD tests cover recovery from a refused class write without a second click.
+
+Both the pinned CounterStrikeSharp.API 1.0.374 and the release build with 1.0.380 compile. The live acceptance items are two simultaneous CS2 clients, saving and reloading preferences through ClientPrefs, and a matched engine profile covering steady play and round starts.
+
+## Historical CheckTransmit measurements from PR 1
 
 Each time below is in microseconds per complete list of recipients. Each scenario has equally sized teams where possible, one target per viewer, alternating team and palette assignment, enemy-only visibility, and 200 warm-up plus 1,000 measured callbacks. The baseline models the decisions at `72d92fb` with a simplified personal color parser. The middle column runs the incoming PR implementation at `ccf97ba` with the same packed bitset substitute as the final harness. Previous PR measurements using HashSet bit writes have different costs.
 
@@ -30,7 +50,7 @@ The final steady-state callback allocated zero managed bytes in these fixtures. 
 
 ## Entity and lifecycle checks
 
-With unique colors, 12v12 went from 576 to 288 glow props and 32v32 from 4,096 to 2,048. Relays are additional, one per live target. Players sharing colors across teams, spectators and enabled GOTV change the demand. With one common color both populated teams still need one glow per target. Native creation, attachment and deletion can still spike during a round transition.
+With unique colors, 12v12 went from 576 to 288 glow props and 32v32 from 4,096 to 2,048. In the PR 1 measurements, each live target also had a relay. Players sharing colors across teams, spectators and enabled GOTV change the demand. With one common color both populated teams still need one glow per target. Native creation, attachment and deletion can still spike during a round transition.
 
 The suite compares transmit bits starting empty and full. It also compares the recipients' visible entities before and after pruning and independently derives exactly which colors any eligible viewer can see. Cases cover self and teammate filtering, spectators, bots, enabled and disabled GOTV, controlled bot teams, a late preferences load, color changes, disconnection, native deletion and index reuse.
 
@@ -40,4 +60,4 @@ A burst of 23 spawns delivered twice in the same frame makes one controller enum
 
 The earlier 45-second server capture quoted in the PR measured CheckTransmit at 23–24 players with a mean of 0.600 ms, p95 of 1.023 ms and p99 of 2.750 ms. There is no matching post-change engine capture. Compare the same map, player count, team mix and personal palette, and sample both steady play and round starts. Record callback mean/p95/p99, server frame time and peak live prop count. The managed timing ratio alone cannot predict server CPU or tick time.
 
-Release compilation passed with the pinned CounterStrikeSharp.API 1.0.373 and with 1.0.380 selected by the release workflow at review time. NuGet reported NU1902 for transitive MySqlConnector 2.4.0.
+For PR 1, release compilation passed with CounterStrikeSharp.API 1.0.373 and with 1.0.380 selected by the release workflow at review time. NuGet reported NU1902 for transitive MySqlConnector 2.4.0.
