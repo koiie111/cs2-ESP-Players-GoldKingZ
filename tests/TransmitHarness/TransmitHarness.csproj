@@ -9,6 +9,7 @@
     <Compile Include="../../cs2-ESP-Players-GoldKingZ/TransmitCache.cs" Link="TransmitCache.cs" />
     <Compile Include="../../cs2-ESP-Players-GoldKingZ/GlowDemand.cs" Link="GlowDemand.cs" />
     <Compile Include="../../cs2-ESP-Players-GoldKingZ/Lifecycle.cs" Link="Lifecycle.cs" />
+    <Compile Include="../../cs2-ESP-Players-GoldKingZ/OwnedGameTimer.cs" Link="OwnedGameTimer.cs" />
     <Compile Include="../../cs2-ESP-Players-GoldKingZ/EspHud.cs" Link="EspHud.cs" />
     <Compile Include="../../cs2-ESP-Players-GoldKingZ/ColorMenu.cs" Link="ColorMenu.cs" />
   </ItemGroup>

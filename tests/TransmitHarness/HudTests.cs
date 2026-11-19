@@ -62,12 +62,11 @@ static class HudTests
             "A click changed the other viewer's HUD");
         menu.RefuseNextClassOn = "esp_ct_dot_2";
         menu.Click(first, "esp_color_00FF66");
-        menu.Click(first, "esp_color_00FF66");
+        int beforeSweeps = Helper.Reconciles;
+        Check(Server.Frames.Count == 2, "Expected one glow sweep and one HUD retry for the burst");
+        Server.Flush();
         Check(!menu.Classes.Contains((1, "esp_ct_dot_2", "esp-level-FF")) &&
             menu.Classes.Contains((1, "esp_ct_dot_2", "esp-level-66")), "Refused RGB write was never repaired");
-        int beforeSweeps = Helper.Reconciles;
-        Check(Server.Frames.Count == 1, "Burst scheduled more than one frame");
-        Server.Flush();
         Check(Helper.Reconciles == beforeSweeps + 1, "Burst did not produce exactly one sweep");
         plugin.Run(recipients);
         Check(bits.Contains(21) && Server.Frames.Count == 0,
@@ -102,7 +101,12 @@ static class HudTests
         plugin.OnEspClientDisconnect(first.Slot);
         Server.Flush();
 
+        menu.RefuseNextClassOn = "esp_t";
+        menu.Click(second, "esp_t");
         menu.Close(second.Slot);
+        writes = menu.Writes;
+        Server.Flush();
+        Check(menu.Writes == writes, "Retry wrote to a closed view");
         Check(GameTimer.OneShots.Single().Interval > 1 && Panorama.Live == menu, "Last close skipped transmit grace");
         plugin.OnEspHudCommand(second, new());
         Check(GameTimer.OneShots.Count == 0 && Panorama.Live == menu, "Reopen during grace did not cancel disposal");
@@ -119,11 +123,19 @@ static class HudTests
         Server.Flush();
         Check(plugin.PendingInputs == 0 && GameTimer.OneShots.All(t => t.Interval < 2), "Map change retained HEX timeout");
         GameTimer.OneShots.Single().Fire();
-        Check(Panorama.Live == null && GameTimer.OneShots.Count == 0 && FunctionReference.Count == 0,
+        Check(Panorama.Live == null && GameTimer.OneShots.Count == 0 && FunctionReference.Count == 1,
             "Idle HUD handle, timeout or registered callback survived cleanup");
 
+        for (int map = 0; map < 50; map++)
+        {
+            plugin.OnMapStart("next");
+            plugin.StartEspRuntime();
+            Server.Flush();
+            Check(GameTimer.Repeating.Count == 1 && FunctionReference.Count == 1, "Map retained old sweep timers");
+        }
         config.PanoramaMenuEnabled = false;
         plugin.StopEspRuntime();
+        Check(GameTimer.Repeating.Count == 0 && FunctionReference.Count == 0, "Stop retained sweep timer");
         Console.WriteLine("PASS HUD: two viewers, 0 writes on repeat, 8 on one-channel preset, 28 on restore, coalesced reconciliation, private HEX, slot reuse and idle disposal");
     }
 }

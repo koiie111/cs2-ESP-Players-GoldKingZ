@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Runtime.InteropServices;
 using CounterStrikeSharp.API.Core;
 using ESP_Players_GoldKingZ.Config;
 
@@ -73,6 +74,12 @@ public partial class MainPlugin
     {
         var colors = GetViewerColors(slot);
         return team == 3 ? colors.CTColor : colors.TColor;
+    }
+
+    internal (int Ct, int T) GetGlowDemandColors(int slot)
+    {
+        var colors = GetViewerColors(slot);
+        return (colors.CTColor.ToArgb(), colors.TColor.ToArgb());
     }
 
     private void ScheduleMenuColorChange(int slot, bool ct)
@@ -211,8 +218,8 @@ public partial class MainPlugin
                 }
                 plan.Version = _planVersion;
             }
-            foreach (int index in plan.Remove) info.TransmitEntities.Remove(index);
-            foreach (int index in plan.Add) info.TransmitEntities.Add(index);
+            foreach (int index in CollectionsMarshal.AsSpan(plan.Remove)) info.TransmitEntities.Remove(index);
+            foreach (int index in CollectionsMarshal.AsSpan(plan.Add)) info.TransmitEntities.Add(index);
         }
     }
 }

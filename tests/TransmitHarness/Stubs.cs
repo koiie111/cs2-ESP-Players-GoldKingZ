@@ -58,7 +58,6 @@ namespace ESP_Players_GoldKingZ
             public CDynamicProp? ModelRelay;
             public Dictionary<int, CDynamicProp> ModelGlows = new();
         }
-        public CounterStrikeSharp.API.Modules.Timers.Timer Timer = null!;
         public Dictionary<int, PlayerDataClass> Player_Data = new();
     }
     public partial class MainPlugin
@@ -67,7 +66,6 @@ namespace ESP_Players_GoldKingZ
         public string ModuleDirectory = "";
         public class Enabled { public bool Value = true; }
         public Enabled g_EnablePlugin = new();
-        public CounterStrikeSharp.API.Modules.Timers.Timer AddTimer(float interval, Action action, CounterStrikeSharp.API.Modules.Timers.TimerFlags flags) => new(action);
         public void QueueReconcile() => ScheduleEspReconcile();
         public int TrackedCount => _trackedEntities.Count;
         public int PendingInputs => _pendingColorInputs.Count;
@@ -108,18 +106,25 @@ namespace CounterStrikeSharp.API
 namespace CounterStrikeSharp.API.Modules.Timers
 {
     public enum TimerFlags { REPEAT = 1, STOP_ON_MAPCHANGE = 2 }
-    public class Timer(Action action)
+    public class Timer
     {
         public static readonly List<Timer> OneShots = new();
+        public static readonly List<Timer> Repeating = new();
         public readonly float Interval;
-        public Timer(float interval, Action action) : this(action)
+        private readonly Action _action;
+        private readonly List<Timer> _active;
+
+        public Timer(float interval, Action action, TimerFlags? flags = null)
         {
             Interval = interval;
+            _action = action;
             Core.FunctionReference.Create(action);
-            OneShots.Add(this);
+            _active = flags == TimerFlags.REPEAT ? Repeating : OneShots;
+            _active.Add(this);
         }
-        public void Fire() { OneShots.Remove(this); action(); }
-        public void Kill() { if (!OneShots.Remove(this)) throw new Exception("Killed an inactive one-shot"); }
+
+        public void Fire() { OneShots.Remove(this); _action(); }
+        public void Kill() { if (!_active.Remove(this)) throw new Exception("Killed an inactive timer"); }
     }
 }
 namespace CounterStrikeSharp.API.Core
@@ -141,8 +146,7 @@ namespace ESP_Players_GoldKingZ
         public static void ClearVariables() { }
         public static void RegisterCommandsAndHooks() { }
         public static void ReloadPlayersGlobals() => Reloads++;
-        public static void StartTimer() => MainPlugin.Instance.g_Main.Timer = MainPlugin.Instance.CreateEspTimer();
-        private static void SetGlowPlayer(CCSPlayerController player, GlowDemand colors) => Spawns++;
+        private static void SetGlowPlayer(Globals.PlayerDataClass handle, int slot, CCSPlayerController player, Dictionary<int, int> colors) => Spawns++;
         public static void CheckPlayerInGlobals(CCSPlayerController player)
         {
             MainPlugin.Instance.g_Main.Player_Data.TryAdd(player.Slot, new Globals.PlayerDataClass { Player = player });

@@ -5,7 +5,6 @@ using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Commands;
 using ESP_Players_GoldKingZ.Config;
 using PanoramaManager;
-using GameTimer = CounterStrikeSharp.API.Modules.Timers.Timer;
 
 namespace ESP_Players_GoldKingZ;
 
@@ -13,44 +12,14 @@ public partial class MainPlugin
 {
     private const string EspLayout = "panorama/layout/custom_game/gkz_esp_colors.vxml_c";
     private PanelHandle? _espHud;
-    private HudTimeout? _idleHudTimer;
+    private OwnedGameTimer? _idleHudTimer;
     private readonly Dictionary<int, EspHudView> _espHudViews = new();
     private readonly Dictionary<int, HexPrompt> _pendingColorInputs = new();
 
     private sealed class HexPrompt(GlowTeamChoice team)
     {
         public GlowTeamChoice Team { get; } = team;
-        public HudTimeout? Timeout;
-    }
-
-    // CSS 1.0.374 registers a Timer's Action as a permanent FunctionReference.
-    // Release our per-request closure both on expiry and when the player cancels.
-    private sealed class HudTimeout
-    {
-        private readonly GameTimer _timer;
-        private readonly int _reference;
-
-        public HudTimeout(float seconds, Action elapsed)
-        {
-            Action callback = () =>
-            {
-                try { elapsed(); }
-                finally { FunctionReference.Remove(_reference); }
-            };
-            _reference = FunctionReference.Create(callback).Identifier;
-            try { _timer = new GameTimer(seconds, callback); }
-            catch
-            {
-                FunctionReference.Remove(_reference);
-                throw;
-            }
-        }
-
-        public void Cancel()
-        {
-            _timer.Kill();
-            FunctionReference.Remove(_reference);
-        }
+        public OwnedGameTimer? Timeout;
     }
 
     private sealed class EspHudView(GlowTeamChoice team)
@@ -62,6 +31,7 @@ public partial class MainPlugin
         public int SelectedPreset = -1;
         public readonly byte?[] Levels = new byte?[9];
         public bool NeedsFullDraw = true;
+        public bool RetryQueued;
     }
 
     private static readonly string[] ChannelPanels =
@@ -138,7 +108,7 @@ public partial class MainPlugin
 
         // PanoramaManager transmits the final close and input release for one second.
         // An explicitly owned one-shot avoids retaining every expired timer in BasePlugin.Timers.
-        _idleHudTimer = new HudTimeout(1.1f, () =>
+        _idleHudTimer = new OwnedGameTimer(1.1f, () =>
         {
             _idleHudTimer = null;
             DisposeEspHud();
@@ -228,7 +198,7 @@ public partial class MainPlugin
         CloseEspHud(slot);
         var prompt = new HexPrompt(team);
         _pendingColorInputs[slot] = prompt;
-        prompt.Timeout = new HudTimeout(30, () =>
+        prompt.Timeout = new OwnedGameTimer(30, () =>
         {
             if (_pendingColorInputs.TryGetValue(slot, out var current) && ReferenceEquals(current, prompt))
                 _pendingColorInputs.Remove(slot);
@@ -251,7 +221,7 @@ public partial class MainPlugin
         });
     }
 
-    private void DrawEspHud(CCSPlayerController player, EspHudView view)
+    private void DrawEspHud(CCSPlayerController player, EspHudView view, bool allowRetry = true)
     {
         if (_espHud is not { } menu) return;
         var colors = GetViewerColors(player.Slot);
@@ -299,6 +269,21 @@ public partial class MainPlugin
         view.SelectedPreset = preset;
         view.Language = language;
         view.NeedsFullDraw = !success;
+        if (!success && allowRetry && !view.RetryQueued) RetryEspHudDraw(menu, player, view);
+    }
+
+    // A round restore can precede a writable layout. Retry once without requiring a click.
+    private void RetryEspHudDraw(PanelHandle menu, CCSPlayerController player, EspHudView view)
+    {
+        int slot = player.Slot;
+        view.RetryQueued = true;
+        Server.NextFrame(() =>
+        {
+            view.RetryQueued = false;
+            if (view.NeedsFullDraw && _runtimeActive && _espHudViews.GetValueOrDefault(slot) == view
+                && player.IsValid && menu.IsOpenFor(player))
+                DrawEspHud(player, view, allowRetry: false);
+        });
     }
 
     private static bool Colorize(PanelHandle menu, CCSPlayerController player, EspHudView view, int first, System.Drawing.Color color)
